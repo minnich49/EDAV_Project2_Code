@@ -9,9 +9,32 @@ output: html_document
 setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2")
 
 #df = read.xlsx("GlobalFloodsRecord.xls", sheetIndex =1)
-df = read.csv("GlobalFloodsRecord.csv")
+#df = read.csv("GlobalFloodsRecord.csv")
+library(xlsx)
+output = read.xlsx("GlobalFloodsRecord.xls", sheetName="MasterTable")
+df_an = readRDS("GlobalFloodsRecord_Analyses.rds")
+df = readRDS("GlobalFloodsRecord.rds")
 
 ```
 
 At one point she had stated we need to do PCA to remove noise...
 Also need to find a way to link datasets
+
+<br />source(&quot;https://raw.github.com/schaunwheeler/tmt/master/R/tmt.R&quot;)<br />
+
+```{r}
+col.nacheck = data.frame(colSums(is.na(df)))
+#Remove if country is not listed
+df = df[complete.cases(df$Country),]
+col.nacheck2 = data.frame(colSums(is.na(df)))
+#Only Removed about 330 Lines
+
+#Trim spaces commats etc
+trim <- function (x) gsub("^\\s+|\\s+$|^\\.+|\\.[^.]*$|\\,", "", x)
+df$Country = trim(df$Country)
+
+saveRDS(df, "GlobalFloodsRecord.rds")
+
+
+```
+
