@@ -14,16 +14,4 @@ df = read.csv("GlobalFloodsRecord.csv")
 ```
 
 At one point she had stated we need to do PCA to remove noise...
-
-```{r}
-library(googleVis)
-locationvar = paste(df$Centroid.X,":", df$Centroid.Y)
-mydf = df[,c("Displaced","Country" )]
-colnames(mydf) = c("Displaced","Country")
-GeoStates <- gvisGeoChart(mydf[1:10,],"Country", "red",
-                          options=list(dataMode="regions",
-                                       width=600, height=400))
-plot(GeoStates)
-
-
-```
+Also need to find a way to link datasets
