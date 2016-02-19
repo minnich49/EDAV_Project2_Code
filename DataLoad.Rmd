@@ -1,0 +1,29 @@
+---
+title: "EDAV-Project2"
+author: "Team"
+date: "February 18, 2016"
+output: html_document
+---
+
+```{r}
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2")
+
+#df = read.xlsx("GlobalFloodsRecord.xls", sheetIndex =1)
+df = read.csv("GlobalFloodsRecord.csv")
+
+```
+
+At one point she had stated we need to do PCA to remove noise...
+
+```{r}
+library(googleVis)
+locationvar = paste(df$Centroid.X,":", df$Centroid.Y)
+mydf = df[,c("Displaced","Country" )]
+colnames(mydf) = c("Displaced","Country")
+GeoStates <- gvisGeoChart(mydf[1:10,],"Country", "red",
+                          options=list(dataMode="regions",
+                                       width=600, height=400))
+plot(GeoStates)
+
+
+```
