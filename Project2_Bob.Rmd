@@ -1,0 +1,530 @@
+---
+title: "EDAV-Project2"
+author: "Team"
+date: "February 18, 2016"
+output: html_document
+---
+#Introduction 
+For this report we will be diving into the global issue of Flood Events
+```{r, warnings = FALSE, message=FALSE, echo = FALSE}
+library(dplyr)
+library(ggplot2)
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code")
+```
+
+
+```{r, warnings = FALSE, message=FALSE, echo = FALSE, fig.align='center}
+df = readRDS("GlobalFloodsRecord_modified.rds")
+
+require(ggplot2)
+require(maps)
+world_map <- map_data("world")
+
+
+df1 = df[,c("Centroid X","Centroid Y")]
+colnames(df1)[which(names(df1) == "Centroid X")] <- "CentroidX"
+colnames(df1)[which(names(df1) == "Centroid Y")] <- "CentroidY"
+
+df1$CentroidX=as.numeric(levels(df1$CentroidX))[df1$CentroidX]
+df1$CentroidY=as.numeric(levels(df1$CentroidY))[df1$CentroidY]
+df1 = df1[complete.cases(df1$CentroidX),]
+
+col.nacheck3 = data.frame(colSums(is.na(df1)))
+
+p <- ggplot() + coord_fixed() + xlab("") + ylab("")
+base_world_messy <- p + geom_polygon(data=world_map, aes(x=long, y=lat, group=group), 
+                                     colour="light green", fill="light green")
+
+base_world_messy
+cleanup <- 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_rect(fill = 'white', colour = 'white'), 
+        axis.line = element_line(colour = "white"), legend.position="none",
+        axis.ticks=element_blank(), axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+base_world <- base_world_messy + cleanup
+
+base_world + ggtitle("World Map")
+map_data = base_world +geom_point(data=df1, aes(x=CentroidX, y=CentroidY), colour="Red",fill="Pink",pch=21, size=2, alpha=I(0.5)) + ggtitle("World Map of Global Flood Events from 1985 to 2003")
+
+map_data
+
+```
+
+```{r}
+df = readRDS("GlobalFloodsRecord.rds")
+df$Displaced = as.numeric(df$Displaced)
+df$Dead = as.numeric(df$Dead)
+df$Country = as.factor(df$Country)
+df$Centroid.X = as.numeric(as.character(df$Centroid.X))
+df$Centroid.Y = as.numeric(as.character(df$Centroid.Y))
+df$Magnitude..M... = as.numeric(as.character(df$Magnitude..M...))
+df$Affected.sq.km = as.numeric(as.character(df$Affected.sq.km))
+df$Duration.in.Days = as.numeric(as.character(df$Duration.in.Days))
+
+ele = readRDS("elevation.RDS")
+df = cbind(df,ele)
+
+
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code/Project2")
+
+
+startend = read.csv("Start_End.csv", header = TRUE)
+df$Began = as.Date(startend$Start, "%d-%b-%y") 
+df$Ended = as.Date(startend$End, "%d-%b-%y") 
+
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Began),"-")))
+colnames(month_clean) = c("Year", "Month", "Day")
+
+df$Year = as.factor(month_clean$Year)
+df$Month = as.factor(month_clean$Month)
+df$Day = as.factor(month_clean$Day)
+
+
+```
+
+```{r}
+displaced_count = df[,c("Country", "Displaced")]%>%
+  group_by(Country) %>%
+  summarize(Displaced = sum(Displaced))
+
+displaced_order = order(displaced_count$Displaced,decreasing  = TRUE)
+top10_dis = displaced_count[displaced_order[1:10],]
+
+
+death_toll = df[,c("Country", "Dead")]%>%
+  group_by(Country) %>%
+  summarize(Dead = sum(Dead))
+
+death_order = order(death_toll$Dead,decreasing  = TRUE)
+top10_death = death_toll[death_order[1:10],]
+
+
+flood_count = df[,c("Country", "Register..")]%>%
+  group_by(Country) %>%
+  summarize(count = n())
+
+flood_count_order = order(flood_count$count,decreasing  = TRUE)
+top10_flood = flood_count[flood_count_order[1:10],]
+
+```
+
+```{r}
+
+ggplot(top10_dis, aes(x = factor(Country), y = Displaced)) +
+  geom_bar(stat = "identity")+
+  coord_flip()+
+  ylab("Country")+
+  ggtitle("Top 10 Countries: Displacement")
+
+ggplot(top10_death, aes(x = factor(Country), y = Dead)) +
+  geom_bar(stat = "identity")+
+  coord_flip()+
+  ggtitle("Top 10 Countries: Death Toll")+
+  labs(y = "New x label")
+
+```
+
+```{r}
+p = ggplot(top10_flood, aes(x = factor(Country), y = count)) +
+  geom_bar(stat = "identity")+
+  coord_flip()+
+  ggtitle("Top 10 Countries: Flood Events")+
+  labs(y = "Country")
+p
+
+```
+
+```{r}
+library(rgbif)
+bobkey = "AIzaSyD-8g3l-VX8TyUUI2wHUyLGBrWYQaBj-vs"
+
+
+ele = data.frame(t(rbind(df$Centroid.X, df$Centroid.Y)))
+colnames(ele) = c("decimalLongitude","decimalLatitude")
+test = elevation(ele, ele$decimalLatitude, ele$decimalLongitude, key = bobkey)
+newdf = cbind(df,test)
+
+```
+
+[12] "Duration.in.Days"                                                                                         
+[13] "Dead"
+[14] "Displaced"
+[15] "Damage..USD."
+[16] "Main.cause"
+[17] "Severity.."
+[18] "Affected.sq.km"
+[19] "Magnitude..M..."                                                                                                     
+```{r}
+filtered = filter(df, elevation>0)
+
+
+ggplot(filtered, aes(elevation)) +
+  geom_histogram(binwidth = 20)+
+  geom_density(alpha=.2, fill="#FF6666")
+
+#one bin for every year
+ggplot(df, aes(Began)) +
+  geom_histogram(binwidth = 31)+
+  geom_density(alpha=.2, fill="#FF6666")
+
+```
+
+```{r}
+
+flood_count_month = df[,c("Month", "Register..")]%>%
+  group_by(Month) %>%
+  summarize(count = n())
+
+
+ggplot(flood_count_month, aes(x = factor(Month), y = count)) +
+  geom_bar(stat = "identity")+
+  ggtitle("Top 10 Countries: Death Toll")+
+  labs(y = "New x label")
+
+flood_yrmonth = df[,c("Month","Year", "Register..")]%>%
+  group_by(Month,Year) %>%
+  summarize(count = n())
+#Worst month was the 7th of 2002
+flood_yrmonth$combined = paste(flood_yrmonth$Month, flood_yrmonth$Year)
+
+ggplot(flood_yrmonth, aes(x = (combined), y = count)) +
+geom_bar(stat = "identity")+
+  ggtitle("Top 10 Countries: Death Toll")+
+  labs(y = "New x label")+ scale_x_discrete("combined", breaks =flood_yrmonth$combined[seq(1,length(flood_yrmonth$combined), 12)])+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+
+flood_yr = df[,c("Year", "Register..")]%>%
+  group_by(Year) %>%
+  summarize(count = n())
+
+ggplot(flood_yr, aes(x = (Year), y = count)) +
+geom_bar(stat = "identity")+
+  ggtitle("Global Flood Events")+
+  labs(y = "Number of Events")+ scale_x_discrete("Year")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r}
+a = ggplot(filtered, aes(x=elevation, y=Displaced)) +
+    geom_point(alpha = .25) +    # Use hollow circles
+    geom_smooth(method=lm)+
+  ylab("Displaced")+
+  xlab("Elevation")            # Add a loess smoothed fit curve with confidence region
+b = ggplot(filtered, aes(x=elevation, y=Dead)) +
+    geom_point(alpha = .25) +    # Use hollow circles
+   geom_smooth(method=lm)+
+  ylab("Dead")+
+  xlab("Elevation")
+c = ggplot(filtered, aes(x=elevation, y=Affected.sq.km)) +
+    geom_point(alpha = .25) +    # Use hollow circles
+   geom_smooth(method=lm)+
+  ylab("Affected Square km")+
+  xlab("Elevation")
+d = ggplot(filtered, aes(x=elevation, y=Magnitude..M...)) +
+    geom_point(alpha = .25) +    # Use hollow circles
+   geom_smooth()+
+  ylab("Magnitude")+
+  xlab("Elevation")
+
+```
+
+```{r}
+dev.off()
+  MainTitle = "Plots of Variables vs Elevation"
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(3, 2, heights = unit(c(0.25, 1,1), "null"))))
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+  print(a, vp = viewport(layout.pos.row = 2, layout.pos.col = 1),newpage=FALSE)
+  print(b, vp = viewport(layout.pos.row = 2, layout.pos.col = 2),newpage=FALSE)
+  print(c, vp = viewport(layout.pos.row = 3, layout.pos.col = 1),newpage=FALSE)
+  print(d, vp = viewport(layout.pos.row = 3, layout.pos.col = 2),newpage=FALSE)
+```
+
+
+```{r}
+
+filt = newdf$elevation > 4000
+high = newdf[filt,]
+
+```
+
+```{r}
+f = ggplot(filtered, aes(x=elevation, y=Duration.in.Days)) +
+    geom_point(alpha = .25) +    # Use hollow circles
+   geom_smooth()+
+  ylab("Duration.in.Days")+
+  xlab("Elevation")
+
+
+```
+
+
+```{r}
+library(wordcloud)
+library(dplyr)
+library(stringr)
+library(tm)
+words = df$Notes.and.Comments..may.include.quoted.headlines.from.copyrighted.news.stories..for.internal.research.purposes.only.
+words = as.character(words)
+
+splitting = strsplit(words,"\\s+")
+
+
+
+splitting2 = unlist(splitting)
+splitting_regex = str_replace_all(splitting2, "[^[:alnum:]]", "")
+splitting_regex = str_replace_all(splitting_regex, "[0-9 ]+", "")
+
+
+stopWords <- stopwords("en")
+
+stopwordindex = splitting_regex %in% stopWords
+splitting_filter = splitting_regex[!stopwordindex]
+count = 1
+length_v = vector(length = length(splitting_filter))
+
+
+count = 1
+for(i in (splitting_filter)){
+  if(nchar(i)>3){
+    length_v[count] = TRUE
+  }else{
+    length_v[count] = FALSE
+  }
+  count = count + 1
+}
+
+
+
+splitting3 = data.frame(splitting_filter[length_v])
+splitting3$count = 1
+
+colnames(splitting3) = c("Word","Count")
+
+grop_by.descriptor <- group_by(splitting3,Word)
+word_count <- summarise(grop_by.descriptor,count = n())
+
+word_count_filt = filter(word_count, count >100)
+
+set.seed(1)
+require(RColorBrewer)
+
+#words  = as.character(word_count$Descriptor)
+wordcloud(freq = word_count_filt$count,word =  word_count_filt$Word,rot.per = 0.15,min.freq =20,colors=brewer.pal(8, "Dark2"))
+```
+
+```{r}
+library(chron)
+library(RColorBrewer)
+library(lattice)
+
+library(ncdf4)
+library(RNetCDF)
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/")
+
+ncin <- open.nc("NOAA_Daily_phi_500mb.nc")
+
+print.nc(ncin)
+dat<-read.nc(ncin)
+z = dat$phi[ , , 2]
+ylat<-dat$Y
+time = dat$T
+xlon<-dat$X
+xlon = xlon -180
+
+#Close file
+
+
+```
+
+
+
+```{r}
+library(fields)
+
+
+library(maptools)
+
+data(wrld_simpl)
+
+#Define min/max values to plot and colors for plotting
+zmin=0.
+
+zmax=20.
+
+clevs<-c(0,2,4,6,8,10,12,14,16,18,20,50)
+
+ccols<-c("#5D00FF", "#002EFF","#00B9FF","#00FFB9" ,"#00FF2E","#5DFF00","#E8FF00", "#FF8B00","red", "#FF008B","#E800FF")
+
+palette(ccols)
+
+#Plot image  (see result in Figure 3)
+
+dev.off()
+dev.new()
+z = dat$phi[ , , 1]
+ylat =ylat[order(ylat)]
+image.plot(xlon,ylat,z,col=palette(ccols))
+plot(wrld_simpl,add=TRUE)
+
+start_date <- as.Date("1-Apr-2002", "%d-%b-%Y")
+
+nextdate = start_date
+for(i in c(1:1000)){
+  test = filter(df, nextdate > Began & nextdate < Ended & Centroid.Y>=35)
+  print(dim(test))
+  print(nextdate)
+  if(length(dim(test)[1]) > 0){
+    a = test
+    date_a = nextdate
+    break
+  }else{
+  }
+  nextdate = nextdate + 1
+}
+
+library(stats)
+ 
+coords = xy.coords(xlon, ylat, recycle=TRUE)
+newcords = spline(coords,n = length(coords$x)*3)
+x = newcords$x
+y = newcords$y
+newcoords_z = xy.coords(x, y, recycle=TRUE)
+
+mydf = data.frame()
+for(i in c(1:length(z[,1]))){
+  ys = spline(z[i,],n = length(coords$x)*3)$y
+  mydf = rbind(mydf, ys)
+}
+nmydf = data.frame()
+for(i in c(1:length(mydf[1,]))){
+  ys = spline(mydf[,i],n = length(coords$x)*3)$y
+  nmydf = rbind(nmydf, ys)
+}
+dev.new()
+z_test = t(as.matrix(nmydf))
+y_ord =y[order(y)]
+image.plot(x,y_ord,z_test,col= rainbow(200)) #col=palette(ccols))
+plot(wrld_simpl,add=TRUE)
+
+color_plot = color.scale(x = z_test,c(0,1,1),c(1,1,0),0)
+
+#The following is all of 144(x) 1 of y(out of 15) and 1 out of t(out of 24873)
+
+#dat$phi[ ,  1, 1]
+
+```
+
+```{r}
+jpeg("/tmp/foo%02d.jpg")
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/photos")
+zmax = max(z)
+zmin = min(z)
+time = dat$T
+time2 = time[1:5] + 1
+
+start_date <- as.Date("1-Apr-2002", "%d-%b-%Y")
+nextdate = start_date
+
+plotdf = filter(df,Centroid.Y>=35)
+for(i in time2) {
+  name = paste("world",i,".png",sep='')
+  png(name)
+  z = dat$phi[ , , i]
+  zmax = max(z)
+  zmin = min(z)
+  image.plot(xlon,ylat,z,zlim = c(zmin,zmax),col=palette(ccols))
+  plot(wrld_simpl,add=TRUE)
+  main_title = paste("This is a plot of ", (format(nextdate, format="%B %d %Y")))
+
+  test = filter(plotdf, nextdate > Began & nextdate < Ended)
+  if(length(dim(test)[1]) > 0){
+    a = test
+    date_a = nextdate
+    points(x = a$Centroid.X, y = a$Centroid.Y,cex = 3, pch= 19)
+  }else{
+  }
+  nextdate = (nextdate + 1)
+  mtext(main_title,side = 3)
+  dev.off()
+}
+
+
+```
+
+
+```{r}
+install
+jpeg("/tmp/foo%02d.jpg")
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/photos")
+zmax = max(z)
+zmin = min(z)
+time = dat$T
+
+#1948-01-01
+start_date_phi <- as.Date("1948-01-01", "%Y-%m-%d")
+start_date_floods <- as.Date("1985-01-01", "%Y-%m-%d")
+start_date_plots  <- as.Date("2003-01-01", "%Y-%m-%d")
+offset = as.numeric(start_date_floods - start_date_phi)
+offset2 = as.numeric(start_date_plots - start_date_phi)
+time2 = time[offset2:length(time)]
+time3 = time2[1:365]
+start_date = start_date_phi + offset2-1
+
+#Begining date of FLOODS 1985-01-01
+plotdf = filter(df,Centroid.Y>=35)
+count = 1
+for(i in seq(min(time3),max(time3),1) ){
+  nextdate = (start_date + count)
+  print(nextdate)
+  name = paste("world",i,".png",sep='')
+  png(name)
+  z2 = dat$phi[ , , i]
+
+        mydf = data.frame()
+      for(i in c(1:length(z2[,1]))){
+        ys = spline(z2[i,],n = length(coords$x)*3)$y
+        mydf = rbind(mydf, ys)
+      }
+      nmydf = data.frame()
+      for(i in c(1:length(mydf[1,]))){
+        ys = spline(mydf[,i],n = length(coords$x)*3)$y
+        nmydf = rbind(nmydf, ys)
+      }
+      z_test = t(as.matrix(nmydf))
+      y_ord =y[order(y)]
+
+  zmax = max(z)
+  zmin = min(z)
+      image.plot(x,y_ord,z_test,col= rainbow(200)) #col=palette(ccols))
+      plot(wrld_simpl,add=TRUE)
+  main_title = paste("This is a plot of ", (format(nextdate, format="%B %d %Y")))
+  
+  test = filter(plotdf, nextdate >= Began & nextdate <= Ended)
+  if(length(dim(test)[1]) > 0){
+    a = test
+    date_a = nextdate
+    points(x = a$Centroid.X, y = a$Centroid.Y,cex = 3, pch= 19)
+  }else{
+  }
+  mtext(main_title,side = 3)
+  dev.off()
+  count = count + 1
+}
+
+
+make.mov <- function(){
+     system("convert *.png -set delay 1/2  2003-OCT.gif")
+     #1/1 is 1 second per 2 frames
+}
+
+make.mov()
+
+
+
+```
+
