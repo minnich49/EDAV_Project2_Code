@@ -1,0 +1,827 @@
+---
+title: "EDAV-Project2"
+author: "Team"
+date: "February 18, 2016"
+output: html_document
+---
+#Introduction 
+For this report we will be diving into the global issue of Flood Events. The intial goal of the paper will be to investigate the datasets to better understand. The dataset being investigated involves geographical, spatial, and time parameters that creates an extremely large amount of information to be explored. We will work to break down this large dataset into something smaller and begin to focus on specific events within the flood dataset.
+
+```{r, message=F, warning=F, echo = F}
+library(dplyr)
+library(ggplot2)
+library(maps)
+library(grid)
+library(gridExtra)
+library(knitr)
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code")
+```
+
+###Global Flood Events: From  Januaray 1st 1985 to December 23, 2015
+EXPLANATION NEEDED
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+df = readRDS("GlobalFloodsRecord_modified.rds")
+
+require(ggplot2)
+world_map <- map_data("world")
+
+
+df1 = df[,c("Centroid X","Centroid Y")]
+colnames(df1)[which(names(df1) == "Centroid X")] <- "CentroidX"
+colnames(df1)[which(names(df1) == "Centroid Y")] <- "CentroidY"
+
+df1$CentroidX=as.numeric(levels(df1$CentroidX))[df1$CentroidX]
+df1$CentroidY=as.numeric(levels(df1$CentroidY))[df1$CentroidY]
+df1 = df1[complete.cases(df1$CentroidX),]
+
+col.nacheck3 = data.frame(colSums(is.na(df1)))
+
+p <- ggplot() + coord_fixed() + xlab("") + ylab("")
+base_world_messy <- p + geom_polygon(data=world_map, aes(x=long, y=lat, group=group), 
+                                     colour="light green", fill="light green")
+
+#base_world_messy
+cleanup <- 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_rect(fill = 'white', colour = 'white'), 
+        axis.line = element_line(colour = "white"), legend.position="none",
+        axis.ticks=element_blank(), axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+base_world <- base_world_messy + cleanup
+
+#base_world + ggtitle("World Map")
+map_data = base_world +geom_point(data=df1, aes(x=CentroidX, y=CentroidY), colour="Red",fill="Pink",pch=21, size=2, alpha=I(0.5)) + ggtitle("World Map of Global Flood Events from 1985 to 2003")
+
+map_data
+
+```
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code")
+
+df = readRDS("GlobalFloodsRecord.rds")
+df$Displaced = as.numeric(df$Displaced)
+df$Dead = as.numeric(df$Dead)
+df$Country = as.factor(df$Country)
+df$Centroid.X = as.numeric(as.character(df$Centroid.X))
+df$Centroid.Y = as.numeric(as.character(df$Centroid.Y))
+df$Magnitude..M... = as.numeric(as.character(df$Magnitude..M...))
+df$Affected.sq.km = as.numeric(as.character(df$Affected.sq.km))
+df$Duration.in.Days = as.numeric(as.character(df$Duration.in.Days))
+
+ele = readRDS("elevation.RDS")
+df = cbind(df,ele)
+
+
+#setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code/Project2")
+
+
+startend = read.csv("Start_End.csv", header = TRUE)
+df$Began = as.Date(startend$Start, "%d-%b-%y") 
+df$Ended = as.Date(startend$End, "%d-%b-%y") 
+
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Began),"-")))
+colnames(month_clean) = c("Year", "Month", "Day")
+
+df$Year = as.factor(month_clean$Year)
+df$Month = as.factor(month_clean$Month)
+df$Day = as.factor(month_clean$Day)
+
+  #Split between northen and southern
+southern = df$latitude < 0
+df$hem[southern] = "S"
+df$hem[!southern] = "N"
+
+
+```
+
+
+In order to understand the map data we begin to break it down by different categories and look at countries with the largest totals in each.
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+top = 10
+displaced_count = df[,c("Country", "Displaced", "hem")]%>%
+  group_by(Country, hem) %>%
+  summarize(Displaced = sum(Displaced))
+
+displaced_order = order(displaced_count$Displaced,decreasing  = TRUE)
+top10_dis = displaced_count[displaced_order[1:top],]
+
+
+death_toll = df[,c("Country", "Dead", "hem")]%>%
+  group_by(Country, hem) %>%
+  summarize(Dead = sum(Dead))
+
+death_order = order(death_toll$Dead,decreasing  = TRUE)
+top10_death = death_toll[death_order[1:top],]
+
+
+flood_count = df[,c("Country", "Register..", "hem")]%>%
+  group_by(Country, hem) %>%
+  summarize(count = n())
+
+flood_count_order = order(flood_count$count,decreasing  = TRUE)
+top10_flood = flood_count[flood_count_order[1:top],]
+
+```
+
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+
+c = ggplot(top10_dis, aes(x = factor(Country), y = Displaced)) +
+  geom_bar(aes(group=hem, colour=hem, fill=hem),stat = "identity")+
+  #coord_flip()+
+    ggtitle("Number of Displaced")+
+  ylab("Number of Displaced")+
+  xlab("Country")+ theme(legend.position="none")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.title.y = element_blank())+ theme(axis.title.x = element_blank())
+b = ggplot(top10_death, aes(x = factor(Country), y = Dead)) +
+  geom_bar(aes(group=hem, colour=hem, fill=hem),stat = "identity")+
+  #coord_flip()+
+  ggtitle("Number of Deaths")+
+  xlab("Country")+ theme(legend.position="none")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.title.y = element_blank())+ theme(axis.title.x = element_blank())
+a  = ggplot(top10_flood, aes(x = factor(Country), y = count)) +
+  geom_bar(stat = "identity",aes(group=hem, colour=hem, fill=hem))+
+  #coord_flip()+
+  ggtitle("Number of Flood Events")+
+  ylab("Numer of Total Flood Events")+
+   theme(legend.position="none")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.title.y = element_blank())  + theme(axis.title.x = element_blank())
+
+
+```
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+#dev.off()
+#dev.new()
+  MainTitle = paste("Top", top, "Countries for:")
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(3, 3, heights = unit(c(0.1, 1,0.1), "null"))))
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 1, layout.pos.col = 2, just = "center"))
+  print(a, vp = viewport(layout.pos.row = 2, layout.pos.col = 1),newpage=FALSE)
+  print(b, vp = viewport(layout.pos.row = 2, layout.pos.col = 2),newpage=FALSE)
+  print(c, vp = viewport(layout.pos.row = 2, layout.pos.col = 3),newpage=FALSE)
+  
+  MainTitle = paste("Red is for Northern Hemisphere, Blue is for Southern Hemisphere")
+
+    grid.text(MainTitle, vp = viewport(layout.pos.row = 3, layout.pos.col = 1:3, just = "center"))
+
+
+```
+
+We can see that there are some insights within some of these plots. We can see that there are several countries that appear in all three plots. These are Brazil,China,Indea,Indonesia,Phillippines,USA and Vienam. Seeing some of the more devloped countries such as the USA seems surprising here because of how many flood events actually occur. There could be a difference in reporting here as well, such as the USA has been recording these events longer and therefore has a higher number of events.
+
+
+Another interesting finding is that Iran, Pakistan and Afghanistan appear in the highest number of deaths but not in the highest number of displaced. Looking deeper into these categoies we find that they just mostlikely missed the top 10.
+
+* Iran we can see that there were 9,107 deaths which also accompanied 10,364 displaced.
+
+* Pakistan we can see that there were 9,346 deaths which also accompanied 14,611 displaced.
+
+* Afghanistan we can see that there were 9,150 deaths which also accompanied 10,931 displaced.
+
+So we can see a positive correlation occuring between the number of Flood Events, Deaths and Displaced.
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+#The following is to use the google API to determine elevations
+#library(rgbif)
+#bobkey = "AIzaSyD-8g3l-VX8TyUUI2wHUyLGBrWYQaBj-vs"
+#ele = data.frame(t(rbind(df$Centroid.X, df$Centroid.Y)))
+#colnames(ele) = c("decimalLongitude","decimalLatitude")
+#test = elevation(ele, ele$decimalLatitude, ele$decimalLongitude, key = bobkey)
+#newdf = cbind(df,test)
+
+```
+
+
+
+
+##Word Cloud
+
+Word clouds were used to try and analyze the differences between the Northern Hemisphere (postive Latitude) and the Sourthern Hemisphere (negative Latitude). We wanted to investigate the column labeled "Notes and Comments", which included many news articles after cleaning the text the following word clouds were produced.
+
+
+<div style="text-align: center;">
+
+  <IMG SRC="WorldCloud_Entire.png" ALT="image",  width= "500">
+  <span style="float:left;width: 50%;">
+  <IMG SRC="WordCloud_Northern.png" float = "right" ALT="image">
+  </span>
+  
+  <span style="float:right;width: 50%;">
+  <IMG SRC="WordCloud_Southern.png" float = "left" ALT="image">
+  </span>
+  
+</div>
+
+What we can see from these plots is an interesting split between the Northern and Southern hemispheres. "People", was largely contributed by the Southern Hemisphere and "Flooding" was more attributed to the Northern.
+
+
+We then continued looking into the differences between northern and southern hemispheres looking at density plots of varios attributes of the flood events.
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+
+#Over entire time
+a = ggplot(df, aes(x = (Began))) +
+    geom_density(aes( colour="#F8766D", fill="#F8766D"),alpha=0.3) +
+  #ggtitle("Top 10 Cou+ntries: Death Toll")+
+    labs(y = "Density") + theme(legend.position="none")+
+      theme(axis.title.x = element_blank()) +ggtitle("Total Time Period")
+
+
+b = ggplot(df, aes(x = (Began))) +
+    geom_density(aes(group=hem, colour=hem, fill=hem),alpha=0.3) +
+  #ggtitle("Density Plot: Month - Red = Northern, Blue = Southern")+ 
+    theme(axis.title.x = element_blank()) + theme(legend.position="none")+
+  ylab("Density")
+
+#Over entire time by month
+
+df$Month = as.numeric(month_clean$Month)
+
+c = ggplot(df, aes(x = (Month))) +
+    geom_density(aes( colour="#F8766D", fill="#F8766D"),alpha=0.3) +
+  #ggtitle("Top 10 Cou+ntries: Death Toll")+
+  theme(legend.position="none")+ 
+    theme(axis.title.y = element_blank())+      
+  theme(axis.title.x = element_blank()) + ggtitle("Grouped by Month")
+
+
+
+#Over entire time by month by hemisphere
+
+d = ggplot(df, aes(x = (Month))) +
+    geom_density(aes(colour=hem, fill=hem),alpha=0.3) +
+  theme(axis.title.y = element_blank(),axis.title.x = element_blank())+
+  theme(legend.title=element_blank())
+
+e = ggplot(df, aes(x = (Began))) +
+    geom_density(aes(group=Severity.., colour=Severity.., fill=Severity..),alpha=0.3) +
+  #ggtitle("Top 10 Cou+ntries: Death Toll")+ 
+  theme(legend.position="none")+
+  labs(y = "Density")+
+  xlab("Total Time Period")
+
+f = ggplot(df, aes(x = (Month))) +
+    geom_density(aes(group=Severity.., colour=Severity.., fill=Severity..),alpha=0.3) +
+    #ggtitle("Top 10 Cou+ntries: Death Toll") + 
+    theme(axis.title.y = element_blank())+    
+    theme(legend.title=element_blank()) + 
+    xlab("Grouped by Month")
+```
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center', fig.width=8}
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(6, 2, heights = unit(c(0.2,1,0.2,1,0.2,1), "null"))))
+  
+  #grid.text(MainTitle, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+  
+  MainTitle = "Density Plots of Flood Events"
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+  print(a, vp = viewport(layout.pos.row = 2, layout.pos.col = 1),newpage=FALSE)
+  print(c, vp = viewport(layout.pos.row = 2, layout.pos.col = 2),newpage=FALSE)
+  MainTitle = "Differences between hemispheres"
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 3, layout.pos.col = 1:2))
+  print(b, vp = viewport(layout.pos.row = 4, layout.pos.col = 1),newpage=FALSE)
+  print(d, vp = viewport(layout.pos.row = 4, layout.pos.col = 2),newpage=FALSE)
+  MainTitle = "Severity"
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 5, layout.pos.col = 1:2))
+  print(e, vp = viewport(layout.pos.row = 6, layout.pos.col = 1),newpage=FALSE)
+  print(f, vp = viewport(layout.pos.row = 6, layout.pos.col = 2),newpage=FALSE)
+
+```
+
+These density plots show us that the total number of flood events occured between the years of 2002 - 2003 by looking at the left column of plots "Total Time Period" Looking at  "Differences between Hemispheres" we can actually see this may be mostly contributed by the Southern Hemisphere Countries begining to record their Flood Events along with the countries in the Northern Hemisphere. We can see that from 2002 on the Southern Hemisphere makes up more of the recorded events.
+
+From teh same column we can look at the Severity Plots for the Total Time Period. The Middle Severity of 1.5 does not start until 2005. This suggests that the rating for this category did not previously exist, judging by how much it is currently used.
+
+We then began to look for correlations between elevation and different aspects of the flooding events. The general intution would be that the higher the elevation, the lower the number of flood events
+
+As we look at the right side of the plots "Groupd by Month" we can further see some interesting characteristics. Looking at the upper right plot it would seem that for the world most of the flooding occurs in the 7th month, July. However as we break this down to Northern and Southern Hemispheres we can see that these seasons are opposite for each region. This makes sense because the different hemispheres experience opposite seasons.
+
+Severity per month does not tell us much more additional information, the splits are very similar.
+
+
+##Time Lapse
+Here we have a Time Lapse of the busiest year in terms of flood events. We can see the events appear as black dots on the world map.
+
+#Still need to load full GIF. Will load it once everyone has their code in.
+
+<div style="text-align: center;"><IMG SRC="2003-OCT.gif" ALT="image", width="500"></div>
+
+We can notice a large amount of cycling that happens in this year.
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+  
+
+filtered = filter(df, elevation>0)
+
+
+a = ggplot(filtered, aes(elevation)) +
+    geom_density(aes(group=hem, colour=hem, fill=hem),alpha=0.3)+ 
+  theme(legend.position="none")+
+  ylab("Density")+
+  xlab("Elevation ")
+
+b = ggplot(filtered, aes(Duration.in.Days)) +
+    geom_density(aes(group=hem, colour=hem, fill=hem),alpha=0.3)+
+    xlim(0,100) +   theme(legend.title=element_blank()) + 
+    xlab("Duration in Days")+
+    theme(axis.title.y = element_blank())
+
+c = ggplot(filtered, aes(x=elevation, y=Duration.in.Days)) +
+    geom_point(aes(group=hem, colour=hem, fill=hem),alpha = .4) +    # Use hollow circles
+   geom_smooth(method = "lm")+
+  ylab("Duration in Days")+
+  xlab("Elevation")
+
+duration = df[which.max(df$Duration.in.Days),c("Country", "Duration.in.Days")]
+
+
+test = filtered[-which.max(filtered$Duration.in.Days),]
+duration2 = test[which.max(test$Duration.in.Days),c("Country", "Duration.in.Days")]
+
+d = ggplot(test, aes(x=elevation, y=Duration.in.Days)) +
+    geom_point(aes(group=hem, colour=hem, fill=hem),alpha = .25) +    # Use hollow circles
+   geom_smooth(method = "lm")+
+  ylab("Duration in Days")+
+  xlab("Elevation")
+
+```
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+#dev.off()
+#dev.new()
+  MainTitle = paste("Elevation and Duration in Days")
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(3, 2, heights = unit(c(0.1, 1,1), "null"))))
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2, just = "center"))
+  print(a, vp = viewport(layout.pos.row = 2, layout.pos.col = 1),newpage=FALSE)
+  print(b, vp = viewport(layout.pos.row = 2, layout.pos.col = 2),newpage=FALSE)
+  print(d, vp = viewport(layout.pos.row = 3, layout.pos.col = 1:2),newpage=FALSE)
+
+
+```
+
+An interesting finding fomr this graph is the outlier that was located at the top for Duration in Days. We can see that there is a flood event that happend in the USA and lasted for 419 days. The next closest was 168 days which occured in Zambia. We can also see a negative correlation with the elevation and duration in days. This was removed in the plotting due to resolution.
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+
+filtered = filter(df, elevation > 0)
+
+a = ggplot(filtered, aes(x=elevation, y=Displaced)) +
+    geom_point(alpha = .25, aes(group=hem, colour=hem, fill=hem)) +    # Use hollow circles
+    geom_smooth(method=lm)+
+  ylab("Displaced")+
+  xlab("Elevation")+theme(legend.position="none")
+b = ggplot(filtered, aes(x=elevation, y=Dead)) +
+    geom_point(alpha = .25,aes(group=hem, colour=hem, fill=hem)) +    # Use hollow circles
+   geom_smooth(method=lm)+
+  ylab("Dead")+
+  xlab("Elevation") + theme(legend.position="none")
+c = ggplot(filtered, aes(x=elevation, y=Affected.sq.km)) +
+    geom_point(alpha = .25,aes(group=hem, colour=hem, fill=hem)) +    # Use hollow circles
+   geom_smooth(method=lm)+
+  ylab("Affected Square km")+
+  xlab("Elevation")+ theme(legend.position="none") 
+
+d = ggplot(filtered, aes(x=elevation, y=Magnitude..M...)) +
+    geom_point(alpha = .25,aes(group=hem, colour=hem, fill=hem)) +    # Use hollow circles
+   geom_smooth(method=lm)+
+  ylab("Magnitude")+
+  xlab("Elevation")+  theme(legend.position="none")
+  
+
+```
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+  MainTitle = "Plots of Different Variables vs Elevation"
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(3, 2, heights = unit(c(0.25, 1,1), "null"))))
+  grid.text(MainTitle, vp = viewport(layout.pos.row = 1, layout.pos.col = 1:2))
+  print(a, vp = viewport(layout.pos.row = 2, layout.pos.col = 1),newpage=FALSE)
+  print(b, vp = viewport(layout.pos.row = 2, layout.pos.col = 2),newpage=FALSE)
+  print(c, vp = viewport(layout.pos.row = 3, layout.pos.col = 1),newpage=FALSE)
+  print(d, vp = viewport(layout.pos.row = 3, layout.pos.col = 2),newpage=FALSE)
+```
+
+From these plots we can notice that there is a negative correlation between elevation and the number of displaced people for the flood events. In contract see a positive correlation between elevation and the number of dead. 
+
+For Affected Square km it might seem that there is no correlation but there is a slightly negative correlation between teh Elevation and Affected Square km. the Y-axis is suppressing this but is not a strong enough correlation to be relevant.
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center', eval = F}
+library(wordcloud)
+library(dplyr)
+library(stringr)
+library(tm)
+words = df$Notes.and.Comments..may.include.quoted.headlines.from.copyrighted.news.stories..for.internal.research.purposes.only.
+words = as.character(words)
+
+splitting = strsplit(words,"\\s+")
+
+
+
+splitting2 = unlist(splitting)
+splitting_regex = str_replace_all(splitting2, "[^[:alnum:]]", "")
+splitting_regex = str_replace_all(splitting_regex, "[0-9 ]+", "")
+
+
+stopWords <- stopwords("en")
+
+stopwordindex = splitting_regex %in% stopWords
+splitting_filter = splitting_regex[!stopwordindex]
+count = 1
+length_v = vector(length = length(splitting_filter))
+
+
+count = 1
+for(i in (splitting_filter)){
+  if(nchar(i)>3){
+    length_v[count] = TRUE
+  }else{
+    length_v[count] = FALSE
+  }
+  count = count + 1
+}
+
+
+
+splitting3 = data.frame(splitting_filter[length_v])
+splitting3$count = 1
+
+colnames(splitting3) = c("Word","Count")
+
+grop_by.descriptor <- group_by(splitting3,Word)
+word_count <- summarise(grop_by.descriptor,count = n())
+
+word_count_filt = filter(word_count, count >100)
+
+set.seed(1)
+require(RColorBrewer)
+
+#words  = as.character(word_count$Descriptor)
+wordcloud(freq = word_count_filt$count,word =  word_count_filt$Word,rot.per = 0.15,min.freq =20,colors=brewer.pal(8, "Dark2"))
+text(x=0.5, y=1.01, "Entire World")
+
+```
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center', eval = F}
+library(wordcloud)
+library(dplyr)
+library(stringr)
+library(tm)
+
+filtered = filter(df, hem == "Northern" )
+words = filtered$Notes.and.Comments..may.include.quoted.headlines.from.copyrighted.news.stories..for.internal.research.purposes.only.
+words = as.character(words)
+
+splitting = strsplit(words,"\\s+")
+
+
+
+splitting2 = unlist(splitting)
+splitting_regex = str_replace_all(splitting2, "[^[:alnum:]]", "")
+splitting_regex = str_replace_all(splitting_regex, "[0-9 ]+", "")
+
+
+stopWords <- stopwords("en")
+
+stopwordindex = splitting_regex %in% stopWords
+splitting_filter = splitting_regex[!stopwordindex]
+count = 1
+length_v = vector(length = length(splitting_filter))
+
+
+count = 1
+for(i in (splitting_filter)){
+  if(nchar(i)>3){
+    length_v[count] = TRUE
+  }else{
+    length_v[count] = FALSE
+  }
+  count = count + 1
+}
+
+
+
+splitting3 = data.frame(splitting_filter[length_v])
+splitting3$count = 1
+
+colnames(splitting3) = c("Word","Count")
+
+grop_by.descriptor <- group_by(splitting3,Word)
+word_count <- summarise(grop_by.descriptor,count = n())
+
+word_count_filt = filter(word_count, count >100)
+
+set.seed(1)
+require(RColorBrewer)
+
+#words  = as.character(word_count$Descriptor)
+wordcloud(freq = word_count_filt$count,word =  word_count_filt$Word,rot.per = 0.15,min.freq =20,colors=brewer.pal(8, "Dark2"))
+
+text(x=0.5, y=1.01, "Northern Hemisphere")
+
+```
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center', eval = F}
+library(wordcloud)
+library(dplyr)
+library(stringr)
+library(tm)
+
+filtered = filter(df, hem == "Southern" )
+words = filtered$Notes.and.Comments..may.include.quoted.headlines.from.copyrighted.news.stories..for.internal.research.purposes.only.
+words = as.character(words)
+
+splitting = strsplit(words,"\\s+")
+
+
+
+splitting2 = unlist(splitting)
+splitting_regex = str_replace_all(splitting2, "[^[:alnum:]]", "")
+splitting_regex = str_replace_all(splitting_regex, "[0-9 ]+", "")
+
+
+stopWords <- stopwords("en")
+
+stopwordindex = splitting_regex %in% stopWords
+splitting_filter = splitting_regex[!stopwordindex]
+count = 1
+length_v = vector(length = length(splitting_filter))
+
+
+count = 1
+for(i in (splitting_filter)){
+  if(nchar(i)>3){
+    length_v[count] = TRUE
+  }else{
+    length_v[count] = FALSE
+  }
+  count = count + 1
+}
+
+
+
+splitting3 = data.frame(splitting_filter[length_v])
+splitting3$count = 1
+
+colnames(splitting3) = c("Word","Count")
+
+grop_by.descriptor <- group_by(splitting3,Word)
+word_count <- summarise(grop_by.descriptor,count = n())
+
+word_count_filt = filter(word_count, count >100)
+
+set.seed(1)
+require(RColorBrewer)
+
+#words  = as.character(word_count$Descriptor)
+wordcloud(freq = word_count_filt$count,word =  word_count_filt$Word,rot.per = 0.15,min.freq =20,colors=brewer.pal(8, "Dark2"), main = "Title")
+
+text(x=0.5, y=1.01, "Southern Hemisphere")
+
+```
+
+
+```{r, message=F, warning=F, echo = FALSE, fig.align='center', eval = F}
+library(wordcloud)
+library(dplyr)
+library(stringr)
+library(tm)
+
+filtered = filter(df, hem == "Northern" )
+words = filtered$Notes.and.Comments..may.include.quoted.headlines.from.copyrighted.news.stories..for.internal.research.purposes.only.
+words = as.character(words)
+
+splitting = strsplit(words,"\\s+")
+
+
+
+splitting2 = unlist(splitting)
+splitting_regex = str_replace_all(splitting2, "[^[:alnum:]]", "")
+splitting_regex = str_replace_all(splitting_regex, "[0-9 ]+", "")
+
+
+stopWords <- stopwords("en")
+
+stopwordindex = splitting_regex %in% stopWords
+splitting_filter = splitting_regex[!stopwordindex]
+count = 1
+length_v = vector(length = length(splitting_filter))
+
+
+count = 1
+for(i in (splitting_filter)){
+  if(nchar(i)>3){
+    length_v[count] = TRUE
+  }else{
+    length_v[count] = FALSE
+  }
+  count = count + 1
+}
+
+
+
+splitting3 = data.frame(splitting_filter[length_v])
+splitting3$count = 1
+
+colnames(splitting3) = c("Word","Count")
+
+grop_by.descriptor <- group_by(splitting3,Word)
+word_count <- summarise(grop_by.descriptor,count = n())
+
+word_count_filt = filter(word_count, count >100)
+
+set.seed(1)
+require(RColorBrewer)
+
+#words  = as.character(word_count$Descriptor)
+wordcloud(freq = word_count_filt$count,word =  word_count_filt$Word,rot.per = 0.15,min.freq =20,colors=brewer.pal(8, "Dark2"), main = "Title")
+
+text(x=0.5, y=1, "Northern Hemisphere")
+
+
+```
+
+
+```{r, warnings = FALSE, message=FALSE, echo = FALSE, fig.align='center',eval=FALSE}
+library(chron)
+library(RColorBrewer)
+library(lattice)
+
+library(ncdf4)
+library(RNetCDF)
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/")
+
+ncin <- open.nc("NOAA_Daily_phi_500mb.nc")
+
+print.nc(ncin)
+dat<-read.nc(ncin)
+z = dat$phi[ , , 2]
+ylat<-dat$Y
+time = dat$T
+xlon<-dat$X
+xlon = xlon -180
+
+#Close file
+
+
+```
+
+
+
+```{r, warnings = FALSE, message=FALSE, echo = FALSE, fig.align='center',eval=FALSE}
+library(fields)
+library(maptools)
+
+data(wrld_simpl)
+
+#Define min/max values to plot and colors for plotting
+zmin=0.
+
+zmax=20.
+
+clevs<-c(0,2,4,6,8,10,12,14,16,18,20,50)
+
+ccols<-c("#5D00FF", "#002EFF","#00B9FF","#00FFB9" ,"#00FF2E","#5DFF00","#E8FF00", "#FF8B00","red", "#FF008B","#E800FF")
+
+palette(ccols)
+
+#Plot image  (see result in Figure 3)
+
+dev.off()
+dev.new()
+z = dat$phi[ , , 1]
+ylat =ylat[order(ylat)]
+image.plot(xlon,ylat,z,col=palette(ccols))
+plot(wrld_simpl,add=TRUE)
+
+start_date <- as.Date("1-Apr-2002", "%d-%b-%Y")
+
+nextdate = start_date
+for(i in c(1:1000)){
+  test = filter(df, nextdate > Began & nextdate < Ended & Centroid.Y>=35)
+  print(dim(test))
+  print(nextdate)
+  if(length(dim(test)[1]) > 0){
+    a = test
+    date_a = nextdate
+    break
+  }else{
+  }
+  nextdate = nextdate + 1
+}
+
+library(stats)
+ 
+```
+
+
+
+```{r, warnings = FALSE, message=FALSE, echo = FALSE, fig.align='center',eval=FALSE}
+coords = xy.coords(xlon, ylat, recycle=TRUE)
+
+ratio = length(xlon)/length(ylat)
+y = spline(ylat,n = length(ylat)*8)$y
+x = spline(xlon,n = length(y)*ratio)$y
+
+
+```
+
+```{r, warnings = FALSE, message=FALSE, echo = FALSE, fig.align='center',eval=FALSE}
+width = 100
+heigth = 5
+windows.options(width=width, height=height)
+mar <- par("mar"); mar[c(2, 4)] <- 0
+
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/photos")
+zmax = max(z)
+zmin = min(z)
+time = dat$T
+
+#1948-01-01
+start_date_phi <- as.Date("1948-01-01", "%Y-%m-%d")
+start_date_floods <- as.Date("1985-01-01", "%Y-%m-%d")
+start_date_plots  <- as.Date("2003-01-01", "%Y-%m-%d")
+
+start_date_plots2  <- as.Date("2005-03-02", "%Y-%m-%d")
+
+offset = as.numeric(start_date_floods - start_date_phi)
+offset2 = as.numeric(start_date_plots - start_date_phi)
+time2 = time[offset2:length(time)]
+time3 = time2[1:2]
+start_date = start_date_phi + offset2-1
+
+#Begining date of FLOODS 1985-01-01
+plotdf = filter(df,Centroid.Y>=35)
+count = 1
+for(i in seq(min(time3),max(time3),1) ){
+  nextdate = (start_date + count)
+  print(nextdate)
+  name = paste("world",i,".png",sep='')
+  png(name,width=600,height=350)
+  z2 = dat$phi[ , , i]
+
+      mydf = data.frame()
+      for(i in c(1:length(z2[,1]))){
+        ys = spline(z2[i,],n = length(y))$y
+        mydf = rbind(mydf, ys)
+      }
+      nmydf = data.frame()
+      for(i in c(1:length(mydf[1,]))){
+        ys = spline(mydf[,i],n = length(x))$y
+        nmydf = rbind(nmydf, ys)
+      }
+      z_test = t(as.matrix(nmydf))
+      #z_test = (as.matrix(nmydf))
+
+      y_ord =y[order(y)]
+
+  zmax = max(z)
+  zmin = min(z)
+      image.plot(x,y_ord,z_test,col= rainbow(200)) #col=palette(ccols))
+      plot(wrld_simpl,add=TRUE)
+  main_title = paste("This is a plot of ", (format(nextdate, format="%B %d %Y")))
+  
+  test = filter(plotdf, nextdate >= Began & nextdate <= Ended)
+  if(length(dim(test)[1]) > 0){
+    a = test
+    date_a = nextdate
+    points(x = a$Centroid.X, y = a$Centroid.Y,cex = 3, pch= 19)
+  }else{
+  }
+  mtext(main_title,side = 3)
+  dev.off()
+  count = count + 1
+}
+
+
+make.mov <- function(){
+     system("convert *.png -set delay 1/2  2003-OCT.gif")
+     #1/1 is 1 second per 2 frames
+}
+
+make.mov()
+
+
+
+```
+
+
+
+
+
+
+
