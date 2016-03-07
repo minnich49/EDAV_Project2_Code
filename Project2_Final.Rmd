@@ -14,6 +14,7 @@ library(maps)
 library(grid)
 library(gridExtra)
 library(knitr)
+library(googleVis)
 setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code")
 ```
 
@@ -819,9 +820,130 @@ make.mov()
 
 ```
 
+Several additional wordclouds were created to investigate the different components of flooding events. The first wordcloud shows the 100 countries with the greatest number of events since 1985. The USA and China seem to be the two countries that were most affected, with the Philippines, Indonesia and India close behind. The second wordcloud highlights the attributes of the "detailed locations" column in the dataset and gives interesting insight into the types of areas that are commonly affected by flooding. The third wordcloud attempts to examine the types of events that cause flooding. Clearly, heavy and torrential rains are what usually cause floods.
 
+```{r, echo=FALSE}
+create_wc <- function(col_num){
+  countries <- df[,col_num]
+  countries <- tolower(countries)
+  countries <- removePunctuation(countries)
+  countries <- removeNumbers(countries)
+  countries <- removeWords(countries,stopwords("english"))
+  
+  myCorpus <- Corpus(VectorSource(countries))
+  myTDM <- TermDocumentMatrix(myCorpus)
+  findFreqTerms(myTDM)
+  
+  m <- as.matrix(myTDM)
+  v <- sort(rowSums(m),decreasing=TRUE)
+  d <- data.frame(word = names(v),freq=v)
+  
+  pal <- brewer.pal(8,"Dark2")
+  wordcloud(d$word,d$freq,max.words=100,colors = pal,random.order=FALSE,rot.per=0.30,fixed.asp = TRUE)
+}
 
+create_wc(4)
+create_wc(8)
+create_wc(16)
+```
 
+By looking at 2003 more closely, we can plot the number of deaths and displacements by month in that year. Both plots showed a similar overall trend; the number of deaths and displacements both reached their maximums from June to August. The faded turquoise line maps the actual number of deaths and displacements, while the dark blue smooth curve is an attempt to represent the overall trend in a more visually appealing way.
 
+```{r, echo=FALSE}
+newdf = df[which((df$Began>="2003-01-01")&(df$Began<="2003-12-31")),]
+
+# can just remove country in dplyr and ggplots below to revert back to original.
+#### Deaths vs. Month
+
+year03 <- newdf %>%
+  mutate(Month = format(Began, "%m"), Year = format(Began, "%Y"),Date = format(Began, "%m-%Y")) %>%
+  group_by(Month, Year, Date) %>%
+  summarise(Dead = sum(Dead))
+year03<-as.data.frame(year03)
+year03$Month<-as.numeric(year03$Month)
+
+#year03<- filter(year03, Country=="USA"|Country=="China"|Country=="Philippines"|Country=="Indonesia"|Country=="India")
+
+c <-ggplot(year03, aes(x=year03$Month,y=year03$Dead,group=1)) +
+  geom_point(size=1.5,colour="#7fcdbb") + 
+  geom_line(size=1.2,colour="#7fcdbb") +
+  stat_smooth(method="lm", formula= y~poly(x,8),se=F,n=80,size=2,color="#253494") +
+  scale_x_continuous(breaks=c(1:12),labels=year03$Date) +
+  labs(x="Month-Year",y="Number of Flood Deaths",title="Flood Deaths vs. Time of Year") +
+  theme(axis.text=element_text(size=8),axis.title=element_text(size=16),plot.title=element_text(size=18,face="bold"))
+c
+
+# Displacements vs. Month
+
+year03 <- newdf %>%
+  mutate(Month = format(Began, "%m"), Year = format(Began, "%Y"),Date = format(Began, "%m-%Y")) %>%
+  group_by(Month, Year, Date) %>%
+  summarise(Displaced = sum(Displaced))
+year03<-as.data.frame(year03)
+year03$Month<-as.numeric(year03$Month)
+
+c <-ggplot(year03, aes(x=year03$Month,y=year03$Displaced,group=1)) +
+  geom_point(size=1.5,colour="#7fcdbb") + 
+  geom_line(size=1.2,colour="#7fcdbb") +
+  stat_smooth(method="lm", formula= y~poly(x,8),se=F,n=80,size=2,color="#253494") +
+  scale_x_continuous(breaks=c(1:12),labels=year03$Date) +
+  labs(x="Month-Year",y="Number of Flood Displacements",title="Flood Displacements vs. Time of Year") +
+  theme(axis.text=element_text(size=8),axis.title=element_text(size=16),plot.title=element_text(size=18,face="bold"))
+c
+```
+
+Displayed below is an interactive world map showing the number of deaths by country in 2003. The countries with fewer deaths are lighter and the countries with more deaths are darker. Run the mouse over a country to display its name and number of deaths associated with it.
+
+```{r, echo=FALSE,results='asis',tidy=TRUE}
+# Google vis chart of Deaths in 2003
+
+op <- options(gvis.plot.tag='chart')
+year03 <- newdf %>% group_by(Country) %>% summarise(Dead = sum(Dead))
+year03<-as.data.frame(year03)
+
+Geo = gvisGeoChart(year03, locationvar="Country", colorvar="Dead", 
+                   options=list(projection="kavrayskiy-vii",
+                                colorAxis= "{colors: ['#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#B10026']}",
+                                backgroundColor="#deebf7",
+                                datalessRegionColor="#f0f0f0",
+                                height=500,
+                                width=900))
+plot(Geo)
+```
+
+Next is another interactive World map showing the number of displaced individuals in 2003. It has the same format and style as the previous one; run the mouse over the countries to see the country name and magnitude.
+
+```{r,echo=FALSE,results='asis',tidy=TRUE}
+#Google vis charts of Displacements in 2003
+
+year03 <- newdf %>% group_by(Country) %>% summarise(Displaced = sum(Displaced))
+year03<-as.data.frame(year03)
+
+Geo2 = gvisGeoChart(year03, locationvar="Country", colorvar="Displaced", 
+                   options=list(projection="kavrayskiy-vii",
+                                colorAxis= "{colors: ['#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#B10026']}",
+                                backgroundColor="#deebf7",
+                                datalessRegionColor="#f0f0f0",
+                                height=500,
+                                width=900))
+plot(Geo2)
+```
+
+Lastly, an interactive google map with tagged flood locations (1985-present) is displayed below. This feature allows the user to zoom in and see exactly where a flood event occured. Clicking the tag shows the date of the event.
+
+```{r, echo=FALSE, results='asis', tidy=TRUE}
+df$latlong <- paste(df$latitude,df$longitude,sep=":")
+
+locmap <- gvisMap(df, locationvar="latlong", tipvar = "Began",
+                     options=list(showTip=TRUE, 
+                                  showLine=TRUE, 
+                                  enableScrollWheel=TRUE,
+                                  mapType='hybrid',
+                                  useMapTypeControl=TRUE,
+                                  zoomLevel=3,
+                                  width=800,
+                                  height=700))
+plot(locmap)
+```
 
 
