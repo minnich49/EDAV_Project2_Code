@@ -1,0 +1,160 @@
+---
+title: ""
+output: html_document
+---
+First of all, let's examine the overall floods events between 1985 and 2015.There are 4312 total events around the whole world. Most of the floods took place near the coast lines.
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+setwd("/Users/jiabinchen/Desktop/W4701/proj2")
+library(ggplot2)
+library(maps)
+df = readRDS("GlobalFloodsRecord.rds")
+df$Displaced = as.numeric(df$Displaced)
+df$Dead = as.numeric(df$Dead)
+df$Country = as.factor(df$Country)
+df$Centroid.X = as.numeric(as.character(df$Centroid.X))
+df$Centroid.Y = as.numeric(as.character(df$Centroid.Y))
+df$Magnitude..M... = as.numeric(as.character(df$Magnitude..M...))
+df$Affected.sq.km = as.numeric(as.character(df$Affected.sq.km))
+df$Duration.in.Days = as.numeric(as.character(df$Duration.in.Days))
+df$Severity.. = as.numeric(as.character(df$Severity..))
+df$M.6 = as.numeric(as.character(df$M.6))
+df$M.4 = as.numeric(as.character(df$M.4))
+
+df = df[,-c(31:36)]
+startend = read.csv("Start_End.csv", header = TRUE)
+df$Began = as.Date(startend$Start, "%d-%b-%y") 
+df$Ended = as.Date(startend$End, "%d-%b-%y") 
+
+month_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Began),"-")))
+colnames(month_clean) = c("Year", "Month", "Day")
+
+df$Year = as.factor(month_clean$Year)
+df$Month = as.factor(month_clean$Month)
+df$Day = as.factor(month_clean$Day)
+
+world_map <- map_data("world")
+p <- ggplot() + coord_fixed() + xlab("") + ylab("")
+base_world_messy <- p + geom_polygon(data=world_map, aes(x=long, y=lat, group=group), 
+                                     colour="light green", fill="light green")
+
+cleanup <- 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+        panel.background = element_rect(fill = 'white', colour = 'white'), 
+        axis.line = element_line(colour = "white"), legend.position="none",
+        axis.ticks=element_blank(), axis.text.x=element_blank(),
+        axis.text.y=element_blank())
+
+base_world <- base_world_messy + cleanup
+df2 = df[df[,'Year']==2003,]
+
+map_data = base_world +geom_point(data=df, aes(x=Centroid.X, y=Centroid.Y), colour="Red",fill="Pink",pch=21, size=2, alpha=I(0.5))
+
+map_data = map_data + ggtitle("World Map on all the flood events")
+
+map_data
+```
+
+
+We did PCA analysis on the 2003 data, with 10 numerical variables of "Duration.in.Days", "Dead", "Displaced", "Severity..", "Affected.sq.km", "Magnitude..M...", "Centroid.X", "Centroid.Y", "M.6" and "M.4". And we grouped by the Main Causes of the floods. 
+
+In 2003, there are 7 main causes, which are "Heavy rain", "Tropical Cyclone", "Brief torrential rain", "Dam/Levy, break or release", "Monsoonal rain", "Snow Melt", "Ice Jams", "Rain and Snow Melt" and "Rainy Season".      
+
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+library(stats)
+df2 = df[df[,'Year']==2003,]
+df$Main.cause = as.factor(df$Main.cause)
+df3 = df2
+df3$Main.cause = as.character(df3$Main.cause)
+
+df3$Main.cause[df3$Main.cause=='Rain and snow'] = "Rain and Snow Melt"
+df3$Main.cause[df3$Main.cause=='Snowmelt'] = "Snow Melt"
+MainCause = df3$Main.cause
+
+pca <- prcomp(df3[,c('Duration.in.Days','Dead','Displaced','Severity..', 'Affected.sq.km','Magnitude..M...','Centroid.X', 'Centroid.Y', 'M.6', 'M.4')],scale=TRUE,center=TRUE)
+plot(pca, type = "l",main="PCA for year 2003")
+```
+
+There is one Priciple Component that explains quite a lot of the variance. The left PCs drop quickly after first one and decrease accordingly.
+
+Let's look at the summary of the PCA.
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+summary(pca)
+```
+
+The first PC consists of 33.85% of the total variance, together with the second PC, 46% of the variance can be explained.
+
+Next let's look at the groups by first two principle components.
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+library(devtools)
+#install_github("vqv/ggbiplot",force = TRUE)
+library(ggbiplot)
+g <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = MainCause,
+              ellipse = TRUE, circle = TRUE)
+g <- g + scale_color_discrete(name = '')
+g <- g + theme(legend.direction = 'horizontal',
+               legend.position = 'top')
+print(g)
+```
+
+The plot shows except two centroid, the other 8 factors have similar directions and they can be explianed by first principle component well. Among the groups of the main causes of floods, we can see "Snow Melt" and "Monsoonal rain" typically lie more right, which indicates heavier damage. While "Ice Jams" and "Brief torrential rain" are left in the plot, which indicates less damage.
+
+```{r, echo=FALSE,message=FALSE, warning=FALSE}
+df$Main.cause = as.factor(df$Main.cause)
+df4 = df
+df4$Main.cause = as.character(df4$Main.cause)
+
+#df4$Main.cause[df4$Main.cause=='Rain and snow'] = "Rain and Snow Melt"
+#df4$Main.cause[df4$Main.cause=='Snowmelt'] = "Snow Melt"
+
+#nrow(df3[df3$Main.cause=='Dam Failure',])
+#unique(df4$Main.cause)
+
+df4$Main.cause[df4$Main.cause=='Snowmelt'] = "Snow Melt"
+df4$Main.cause[df4$Main.cause=='snowmelt'] = "Snow Melt"
+
+df4$Main.cause[df4$Main.cause=='heavy Rain'] = "Heavy Rain"
+df4$Main.cause[df4$Main.cause=='heavy rain'] = "Heavy Rain"
+df4$Main.cause[df4$Main.cause=='Heavy  Rain'] = "Heavy Rain"
+df4$Main.cause[df4$Main.cause=='Heavy rain'] = "Heavy Rain"
+df4$Main.cause[df4$Main.cause=='HeavyRain'] = "Heavy Rain"
+
+df4$Main.cause[df4$Main.cause=='Rain and snow'] = "Rain and Snow Melt"
+df4$Main.cause[df4$Main.cause=='Rain and snowmelt'] = "Rain and Snow Melt"
+df4$Main.cause[df4$Main.cause=='Snowmelt and Heavy Rain'] = "Rain and Snow Melt"
+
+df4$Main.cause[df4$Main.cause %in% grep("^Tropical Storm", unique(df4$Main.cause), value = TRUE)] = "Tropical"
+df4$Main.cause[df4$Main.cause %in% grep("^Typhoon", unique(df4$Main.cause), value = TRUE)] = "Typhoon"
+df4$Main.cause[df4$Main.cause %in% grep("Monsoon", unique(df4$Main.cause), value = TRUE)] = "Monsoon"
+df4$Main.cause[df4$Main.cause %in% grep("monsoon", unique(df4$Main.cause), value = TRUE)] = "Monsoon"
+df4$Main.cause[df4$Main.cause %in% grep("^Hurricane", unique(df4$Main.cause), value = TRUE)] = "Hurricane"
+df4$Main.cause[df4$Main.cause %in% grep("^Tropical Cyclone", unique(df4$Main.cause), value = TRUE)] = "Tropical"
+df4$Main.cause[df4$Main.cause %in% grep("jam", unique(df4$Main.cause), value = TRUE)] = "Ice Jams"
+df4$Main.cause[df4$Main.cause %in% grep("Jam", unique(df4$Main.cause), value = TRUE)] = "Ice Jams"
+
+df4$Main.cause[df4$Main.cause %in% grep("^Dam", unique(df4$Main.cause), value = TRUE)] = "Dam"
+df4$Main.cause[df4$Main.cause %in% grep("Torrential", unique(df4$Main.cause), value = TRUE)] = "Torrrential Rain"
+df4$Main.cause[df4$Main.cause %in% grep("torrential", unique(df4$Main.cause), value = TRUE)] = "Torrrential Rain"
+
+#Extract 11 Main causes
+cause = c("Snow Melt","Heavy Rain","Rain and Snow Melt","Tropical","Typhoon","Monsoon","Hurricane","Ice Jams",
+          "Dam","Torrrential Rain")
+
+MainCause = df4$Main.cause
+
+df5 = df4[df4$Main.cause %in% cause,]
+
+pca <- prcomp(df5[,c('Duration.in.Days','Dead','Displaced','Severity..', 'Affected.sq.km','Magnitude..M...','Centroid.X', 'Centroid.Y', 'M.6', 'M.4')],scale=TRUE,center=TRUE)
+plot(pca, type = "l",main="All floods")
+summary(pca)
+
+g1 <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = df5$Main.cause,
+              ellipse = TRUE, circle = TRUE)
+g1 <- g1 + scale_color_discrete(name = '')
+g1 <- g1 + theme(legend.direction = 'horizontal',
+               legend.position = 'top')
+print(g1)
+
+```
