@@ -1,0 +1,502 @@
+---
+title: "2003 USA Flood Analysis"
+output: html_document
+---
+
+# 2003 USA Flood Analysis
+
+After some general analysis, we noticed that the most floods took place in 2003. Of all the events that occurred that year, the USA had recorded the most floods. Below is a plot of floods by month in the USA in 2003.
+
+```{r, message=F, warning=F, echo = F}
+library(gdata)
+library(ggplot2)
+library(plyr)
+library(xlsx)
+library(ncdf)
+library(ncdf.tools)
+library(chron)
+library(RColorBrewer)
+library(lattice)
+library(ncdf4)
+library(RNetCDF)
+
+setwd("/Users/johnsibilla/desktop/EDAV Project 2")
+df <- read.csv("GlobalFloodsRecord.csv")
+
+col.nacheck = data.frame(colSums(is.na(df)))
+#Remove if country is not listed
+df = df[complete.cases(df$Country),]
+col.nacheck2 = data.frame(colSums(is.na(df)))
+#Only Removed about 330 Lines
+
+#Trim spaces commats etc
+trim <- function (x) gsub("^\\s+|\\s+$|^\\.+|\\.[^.]*$|\\,", "", x)
+df$Country = trim(df$Country)
+
+a <- df[-which(df$Began == "" | df$Began == "#N/A"), ]
+a$Began = as.character(a$Began)
+elems <- unlist( strsplit(a$Began , "-", fixed = TRUE ) )
+m <- matrix( elems , ncol = 3 , byrow = TRUE )
+colnames(m) <- c('day', 'month', 'year')
+by_year <- cbind(a, m)
+
+by_year$year = as.numeric(levels(by_year$year))[as.integer(by_year$year)]
+dat03 <- subset(by_year, year == 03, 
+                select=c(Register..:year))
+
+dat03$month=as.character(dat03$month)
+dat03$month[dat03$month=='Jan'] <- 1
+dat03$month[dat03$month=='Feb'] <- 2
+dat03$month[dat03$month=='Mar'] <- 3
+dat03$month[dat03$month=='Apr'] <- 4
+dat03$month[dat03$month=='May'] <- 5
+dat03$month[dat03$month=='Jun'] <- 6
+dat03$month[dat03$month=='Jul'] <- 7
+dat03$month[dat03$month=='Aug'] <- 8
+dat03$month[dat03$month=='Sep'] <- 9
+dat03$month[dat03$month=='Oct'] <- 10
+dat03$month[dat03$month=='Nov'] <- 11
+dat03$month[dat03$month=='Dec'] <- 12
+
+USA03 <- subset(dat03, Country == "USA", 
+              select=c(Register..:year))
+
+qplot(month, data=USA03, geom="bar", fill=month) +
+        #labs(title = "Floods by Month in USA, 2003") +
+        scale_x_discrete(limits=c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+        labs(x="Month") + 
+        labs(y="Total") +
+        theme_classic() +
+        theme(legend.position="none")
+```
+
+Clearly, the most floods occured in February and there was at least one flooding event in every month. Next, we examine the data describing the damage caused by floods in the USA.  
+
+# Damage by Month in USA, 2003
+
+```{r, message=F, warning=F, echo = F}
+
+library(Rmisc)
+
+displaced03 <- USA03[c(12, 13, 14, 18, 38)]
+displaced03$Duration.in.Days = as.numeric(levels(displaced03$Duration.in.Days))[as.integer(displaced03$Duration.in.Days)]
+displaced03$Dead = as.numeric(levels(displaced03$Dead))[as.integer(displaced03$Dead)]
+displaced03$Displaced = as.numeric(levels(displaced03$Displaced))[as.integer(displaced03$Displaced)]
+displaced03$Affected.sq.km = as.numeric(levels(displaced03$Affected.sq.km))[as.integer(displaced03$Affected.sq.km)]
+
+displaced <- ggplot(displaced03, aes(month, Displaced, fill=month)) +
+        geom_bar(stat="identity") +
+        scale_x_discrete(limits=c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+        labs(title = "Total Displaced") +
+        labs(x = "Month") +
+        theme_classic() +
+        theme(legend.position="none") 
+
+dead <- ggplot(displaced03, aes(month, Dead, fill=month)) +
+        geom_bar(stat="identity") +
+        scale_x_discrete(limits=c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+        labs(title = "Total Dead") +
+        labs(x = "Month") +
+        theme_classic() +
+        theme(legend.position="none") 
+
+duration <- ggplot(displaced03, aes(month, Duration.in.Days, fill=month)) +
+        geom_bar(stat="identity") +
+        scale_x_discrete(limits=c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+        labs(title = "Total Days of Flooding") +
+        labs(x = "Month") +
+        labs(y = "Duration") +
+        theme_classic() +
+        theme(legend.position="none") 
+
+area <- ggplot(displaced03, aes(month, Affected.sq.km, fill=month)) +
+        geom_bar(stat="identity") +
+        scale_x_discrete(limits=c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+        labs(title = "Total Affected Area") +
+        labs(x = "Month") +
+        labs(y = "Sq. Kilometers") +
+        theme_classic() +
+        theme(legend.position="none") 
+
+multiplot(displaced, dead, duration, area, cols=2)
+```
+
+As mentioned above, February was the month that had the most recorded floods (5). As would be expected, February also had the most flooding days (around 40) and largest cumulatively affected area by a significant margin. Considering these facts, it is surprising that the total number of people displaced was very low, especially compared to the total number of people displaced in May, June, July, and September. Interestingly, the total number of dead is relatively low compared to other months that had fewer floods in a smaller total area. 
+
+One might assume that this is because the magnitude of these floods was less, but in fact all but one of the floods occurring in February ranked above 5.064516 (average flood magnitude in 2003). Another explanation for this is where the floods occurred. The February floods were in southern California, eastern Kentucky, the southern Mid-Atlantic, along the Gulf Coast (Mississippi and Louisiana), and in Virginia. The only area where nobody was displaced was Eastern Kentucky, which is also where two people were recorded dead. One possible explanation is that these locations were less populated than some of the other flood locations. It is also possible that these locations were more prepared for the floods and therefore incurred fewer problems and casualties. Unfortunately, there was no data recorded for the damage in US dollars for these floods.
+
+
+# Pressure Levels Between Floods
+
+We decided it might be interesting to find a location where several events occured withing the span of a few months and reference it with the day-by-day pressure to see if there was a pattern. We looked at floods that began on September 18, 2003 and November 19, 2003 (ending on September 24, 2003 and November 22, 2003 respectively). The main cause of the September flood was a tropical cyclone and heavy rain was the main cause of the November event. The magnitudes and locations of these floods was 6.1, 6.2 and (-78.4245, 37.3311), (-79.3157, 38.8759) respectively. These coordinates correspond to a point in the mid-Atlantic; more specifically, parts of Maryland, West Virginia, and Virginia were the areas affected by these events.   
+
+```{r, message=F, warning=F, echo = F}
+library(ggplot2)
+library(chron)
+library(RColorBrewer)
+library(lattice)
+
+library(ncdf4)
+library(RNetCDF)
+setwd("/Users/johnsibilla/desktop/EDAV Project 2")
+ncin <- open.nc("NOAA_Daily_phi_500mb.nc")
+
+print.nc(ncin)
+dat<-read.nc(ncin)
+z = dat$phi[ , , 2]
+ylat<-dat$Y
+time = dat$T
+xlon<-dat$X
+xlon = xlon -180
+press<-dat$P
+
+start_date_phi <- as.Date("1948-01-01", "%Y-%m-%d")
+
+#pulling pressure data for dates between floods (9/8/03-11/25/03)
+start_date_plots_14 <- as.Date("2003-09-08", "%Y-%m-%d")
+start_date_plots_13 <- as.Date("2003-09-09", "%Y-%m-%d")
+start_date_plots_12 <- as.Date("2003-09-10", "%Y-%m-%d")
+start_date_plots_11 <- as.Date("2003-09-11", "%Y-%m-%d")
+start_date_plots_10 <- as.Date("2003-09-12", "%Y-%m-%d")
+start_date_plots09 <- as.Date("2003-09-13", "%Y-%m-%d")
+start_date_plots08 <- as.Date("2003-09-14", "%Y-%m-%d")
+start_date_plots07 <- as.Date("2003-09-15", "%Y-%m-%d")
+start_date_plots06 <- as.Date("2003-09-16", "%Y-%m-%d")
+start_date_plots05 <- as.Date("2003-09-17", "%Y-%m-%d")
+start_date_plots04 <- as.Date("2003-09-18", "%Y-%m-%d")
+start_date_plots03 <- as.Date("2003-09-19", "%Y-%m-%d")
+start_date_plots02 <- as.Date("2003-09-20", "%Y-%m-%d")
+start_date_plots01 <- as.Date("2003-09-21", "%Y-%m-%d")
+start_date_plots0 <- as.Date("2003-09-22", "%Y-%m-%d")
+start_date_plots1  <- as.Date("2003-09-23", "%Y-%m-%d")
+start_date_plots2  <- as.Date("2003-09-24", "%Y-%m-%d")
+start_date_plots3  <- as.Date("2003-09-25", "%Y-%m-%d")
+start_date_plots4  <- as.Date("2003-09-26", "%Y-%m-%d")
+start_date_plots5  <- as.Date("2003-09-27", "%Y-%m-%d")
+start_date_plots6  <- as.Date("2003-09-28", "%Y-%m-%d")
+start_date_plots7  <- as.Date("2003-09-29", "%Y-%m-%d")
+start_date_plots8  <- as.Date("2003-09-30", "%Y-%m-%d")
+start_date_plots9  <- as.Date("2003-10-1", "%Y-%m-%d")
+start_date_plots10 <- as.Date("2003-10-2", "%Y-%m-%d")
+start_date_plots11 <- as.Date("2003-10-3", "%Y-%m-%d")
+start_date_plots12 <- as.Date("2003-10-4", "%Y-%m-%d")
+start_date_plots13 <- as.Date("2003-10-5", "%Y-%m-%d")
+start_date_plots14 <- as.Date("2003-10-6", "%Y-%m-%d")
+start_date_plots15 <- as.Date("2003-10-7", "%Y-%m-%d")
+start_date_plots16 <- as.Date("2003-10-8", "%Y-%m-%d")
+start_date_plots17 <- as.Date("2003-10-9", "%Y-%m-%d")
+start_date_plots18 <- as.Date("2003-10-10", "%Y-%m-%d")
+start_date_plots19 <- as.Date("2003-10-11", "%Y-%m-%d")
+start_date_plots20 <- as.Date("2003-10-12", "%Y-%m-%d")
+start_date_plots21 <- as.Date("2003-10-13", "%Y-%m-%d")
+start_date_plots22 <- as.Date("2003-10-14", "%Y-%m-%d")
+start_date_plots23 <- as.Date("2003-10-15", "%Y-%m-%d")
+start_date_plots24 <- as.Date("2003-10-16", "%Y-%m-%d")
+start_date_plots25 <- as.Date("2003-10-17", "%Y-%m-%d")
+start_date_plots26 <- as.Date("2003-10-18", "%Y-%m-%d")
+start_date_plots27 <- as.Date("2003-10-19", "%Y-%m-%d")
+start_date_plots28 <- as.Date("2003-10-20", "%Y-%m-%d")
+start_date_plots29 <- as.Date("2003-10-21", "%Y-%m-%d")
+start_date_plots30 <- as.Date("2003-10-22", "%Y-%m-%d")
+start_date_plots31 <- as.Date("2003-10-23", "%Y-%m-%d")
+start_date_plots32 <- as.Date("2003-10-24", "%Y-%m-%d")
+start_date_plots33 <- as.Date("2003-10-25", "%Y-%m-%d")
+start_date_plots34 <- as.Date("2003-10-26", "%Y-%m-%d")
+start_date_plots35 <- as.Date("2003-10-27", "%Y-%m-%d")
+start_date_plots36 <- as.Date("2003-10-28", "%Y-%m-%d")
+start_date_plots37 <- as.Date("2003-10-29", "%Y-%m-%d")
+start_date_plots38 <- as.Date("2003-10-30", "%Y-%m-%d")
+start_date_plots39 <- as.Date("2003-10-31", "%Y-%m-%d")
+start_date_plots40 <- as.Date("2003-11-01", "%Y-%m-%d")
+start_date_plots41 <- as.Date("2003-11-02", "%Y-%m-%d")
+start_date_plots42 <- as.Date("2003-11-03", "%Y-%m-%d")
+start_date_plots43 <- as.Date("2003-11-04", "%Y-%m-%d")
+start_date_plots44 <- as.Date("2003-11-05", "%Y-%m-%d")
+start_date_plots45 <- as.Date("2003-11-06", "%Y-%m-%d")
+start_date_plots46 <- as.Date("2003-11-07", "%Y-%m-%d")
+start_date_plots47 <- as.Date("2003-11-08", "%Y-%m-%d")
+start_date_plots48 <- as.Date("2003-11-09", "%Y-%m-%d")
+start_date_plots49 <- as.Date("2003-11-10", "%Y-%m-%d")
+start_date_plots50 <- as.Date("2003-11-11", "%Y-%m-%d")
+start_date_plots51 <- as.Date("2003-11-12", "%Y-%m-%d")
+start_date_plots52 <- as.Date("2003-11-13", "%Y-%m-%d")
+start_date_plots53 <- as.Date("2003-11-14", "%Y-%m-%d")
+start_date_plots54 <- as.Date("2003-11-15", "%Y-%m-%d")
+start_date_plots55 <- as.Date("2003-11-16", "%Y-%m-%d")
+start_date_plots56 <- as.Date("2003-11-17", "%Y-%m-%d")
+start_date_plots57 <- as.Date("2003-11-18", "%Y-%m-%d")
+start_date_plots58 <- as.Date("2003-11-19", "%Y-%m-%d")
+start_date_plots59 <- as.Date("2003-11-20", "%Y-%m-%d")
+start_date_plots60 <- as.Date("2003-11-21", "%Y-%m-%d")
+start_date_plots61 <- as.Date("2003-11-22", "%Y-%m-%d")
+start_date_plots62 <- as.Date("2003-11-23", "%Y-%m-%d")
+start_date_plots63 <- as.Date("2003-11-24", "%Y-%m-%d")
+start_date_plots64 <- as.Date("2003-11-25", "%Y-%m-%d")
+
+
+offset_14 = as.numeric(start_date_plots_14 - start_date_phi)
+offset_13 = as.numeric(start_date_plots_13 - start_date_phi)
+offset_12 = as.numeric(start_date_plots_12 - start_date_phi)
+offset_11 = as.numeric(start_date_plots_11 - start_date_phi)
+offset_10 = as.numeric(start_date_plots_10 - start_date_phi)
+offset09 = as.numeric(start_date_plots09 - start_date_phi)
+offset08 = as.numeric(start_date_plots08 - start_date_phi)
+offset07 = as.numeric(start_date_plots07 - start_date_phi)
+offset06 = as.numeric(start_date_plots06 - start_date_phi)
+offset05 = as.numeric(start_date_plots05 - start_date_phi)
+offset04 = as.numeric(start_date_plots04 - start_date_phi)
+offset03 = as.numeric(start_date_plots03 - start_date_phi)
+offset02 = as.numeric(start_date_plots02 - start_date_phi)
+offset01 = as.numeric(start_date_plots01 - start_date_phi)
+offset0 = as.numeric(start_date_plots0 - start_date_phi)
+offset1 = as.numeric(start_date_plots1 - start_date_phi)
+offset2 = as.numeric(start_date_plots2 - start_date_phi)
+offset3 = as.numeric(start_date_plots3 - start_date_phi)
+offset4 = as.numeric(start_date_plots4 - start_date_phi)
+offset5 = as.numeric(start_date_plots5 - start_date_phi)
+offset6 = as.numeric(start_date_plots6 - start_date_phi)
+offset7 = as.numeric(start_date_plots7 - start_date_phi)
+offset8 = as.numeric(start_date_plots8 - start_date_phi)
+offset9 = as.numeric(start_date_plots9 - start_date_phi)
+offset10 = as.numeric(start_date_plots10 - start_date_phi)
+offset11 = as.numeric(start_date_plots11 - start_date_phi)
+offset12 = as.numeric(start_date_plots12 - start_date_phi)
+offset13 = as.numeric(start_date_plots13 - start_date_phi)
+offset14 = as.numeric(start_date_plots14 - start_date_phi)
+offset15 = as.numeric(start_date_plots15 - start_date_phi)
+offset16 = as.numeric(start_date_plots16 - start_date_phi)
+offset17 = as.numeric(start_date_plots17 - start_date_phi)
+offset18 = as.numeric(start_date_plots18 - start_date_phi)
+offset19 = as.numeric(start_date_plots19 - start_date_phi)
+offset20 = as.numeric(start_date_plots20 - start_date_phi)
+offset21 = as.numeric(start_date_plots21 - start_date_phi)
+offset22 = as.numeric(start_date_plots22 - start_date_phi)
+offset23 = as.numeric(start_date_plots23 - start_date_phi)
+offset24 = as.numeric(start_date_plots24 - start_date_phi)
+offset25 = as.numeric(start_date_plots25 - start_date_phi)
+offset26 = as.numeric(start_date_plots26 - start_date_phi)
+offset27 = as.numeric(start_date_plots27 - start_date_phi)
+offset28 = as.numeric(start_date_plots28 - start_date_phi)
+offset29 = as.numeric(start_date_plots29 - start_date_phi)
+offset30 = as.numeric(start_date_plots30 - start_date_phi)
+offset31 = as.numeric(start_date_plots31 - start_date_phi)
+offset32 = as.numeric(start_date_plots32 - start_date_phi)
+offset33 = as.numeric(start_date_plots33 - start_date_phi)
+offset34 = as.numeric(start_date_plots34 - start_date_phi)
+offset35 = as.numeric(start_date_plots35 - start_date_phi)
+offset36 = as.numeric(start_date_plots36 - start_date_phi)
+offset37 = as.numeric(start_date_plots37 - start_date_phi)
+offset38 = as.numeric(start_date_plots38 - start_date_phi)
+offset39 = as.numeric(start_date_plots39 - start_date_phi)
+offset40 = as.numeric(start_date_plots40 - start_date_phi)
+offset41 = as.numeric(start_date_plots41 - start_date_phi)
+offset42 = as.numeric(start_date_plots42 - start_date_phi)
+offset43 = as.numeric(start_date_plots43 - start_date_phi)
+offset44 = as.numeric(start_date_plots44 - start_date_phi)
+offset45 = as.numeric(start_date_plots45 - start_date_phi)
+offset46 = as.numeric(start_date_plots46 - start_date_phi)
+offset47 = as.numeric(start_date_plots47 - start_date_phi)
+offset48 = as.numeric(start_date_plots48 - start_date_phi)
+offset49 = as.numeric(start_date_plots49 - start_date_phi)
+offset50 = as.numeric(start_date_plots50 - start_date_phi)
+offset51 = as.numeric(start_date_plots51 - start_date_phi)
+offset52 = as.numeric(start_date_plots52 - start_date_phi)
+offset53 = as.numeric(start_date_plots53 - start_date_phi)
+offset54 = as.numeric(start_date_plots54 - start_date_phi)
+offset55 = as.numeric(start_date_plots55 - start_date_phi)
+offset56 = as.numeric(start_date_plots56 - start_date_phi)
+offset57 = as.numeric(start_date_plots57 - start_date_phi)
+offset58 = as.numeric(start_date_plots58 - start_date_phi)
+offset59 = as.numeric(start_date_plots59 - start_date_phi)
+offset60 = as.numeric(start_date_plots60 - start_date_phi)
+offset61 = as.numeric(start_date_plots61 - start_date_phi)
+offset62 = as.numeric(start_date_plots62 - start_date_phi)
+offset63 = as.numeric(start_date_plots63 - start_date_phi)
+offset64 = as.numeric(start_date_plots64 - start_date_phi)
+
+
+z_14 = dat$phi[ , , offset_14]
+z_13 = dat$phi[ , , offset_13]
+z_12 = dat$phi[ , , offset_12]
+z_11 = dat$phi[ , , offset_11]
+z_10 = dat$phi[ , , offset_10]
+z09 = dat$phi[ , , offset09]
+z08 = dat$phi[ , , offset08]
+z07 = dat$phi[ , , offset07]
+z06 = dat$phi[ , , offset06]
+z05 = dat$phi[ , , offset05]
+z04 = dat$phi[ , , offset04]
+z03 = dat$phi[ , , offset03]
+z02 = dat$phi[ , , offset02]
+z01 = dat$phi[ , , offset01]
+z0 = dat$phi[ , , offset0]
+z1 = dat$phi[ , , offset1]
+z2 = dat$phi[ , , offset2]
+z3 = dat$phi[ , , offset3]
+z4 = dat$phi[ , , offset4]
+z5 = dat$phi[ , , offset5]
+z6 = dat$phi[ , , offset6]
+z7 = dat$phi[ , , offset7]
+z8 = dat$phi[ , , offset8]
+z9 = dat$phi[ , , offset9]
+z10 = dat$phi[ , , offset10]
+z11 = dat$phi[ , , offset11]
+z12 = dat$phi[ , , offset12]
+z13 = dat$phi[ , , offset13]
+z14 = dat$phi[ , , offset14]
+z15 = dat$phi[ , , offset15]
+z16 = dat$phi[ , , offset16]
+z17 = dat$phi[ , , offset17]
+z18 = dat$phi[ , , offset18]
+z19 = dat$phi[ , , offset19]
+z20 = dat$phi[ , , offset20]
+z21 = dat$phi[ , , offset21]
+z22 = dat$phi[ , , offset22]
+z23 = dat$phi[ , , offset23]
+z24 = dat$phi[ , , offset24]
+z25 = dat$phi[ , , offset25]
+z26 = dat$phi[ , , offset26]
+z27 = dat$phi[ , , offset27]
+z28 = dat$phi[ , , offset28]
+z29 = dat$phi[ , , offset29]
+z30 = dat$phi[ , , offset30]
+z31 = dat$phi[ , , offset31]
+z32 = dat$phi[ , , offset32]
+z33 = dat$phi[ , , offset33]
+z34 = dat$phi[ , , offset34]
+z35 = dat$phi[ , , offset35]
+z36 = dat$phi[ , , offset36]
+z37 = dat$phi[ , , offset37]
+z38 = dat$phi[ , , offset38]
+z39 = dat$phi[ , , offset39]
+z40 = dat$phi[ , , offset40]
+z41 = dat$phi[ , , offset41]
+z42 = dat$phi[ , , offset42]
+z43 = dat$phi[ , , offset43]
+z44 = dat$phi[ , , offset44]
+z45 = dat$phi[ , , offset45]
+z46 = dat$phi[ , , offset46]
+z47 = dat$phi[ , , offset47]
+z48 = dat$phi[ , , offset48]
+z49 = dat$phi[ , , offset49]
+z50 = dat$phi[ , , offset50]
+z51 = dat$phi[ , , offset51]
+z52 = dat$phi[ , , offset52]
+z53 = dat$phi[ , , offset53]
+z54 = dat$phi[ , , offset54]
+z55 = dat$phi[ , , offset55]
+z56 = dat$phi[ , , offset56]
+z57 = dat$phi[ , , offset57]
+z58 = dat$phi[ , , offset58]
+z59 = dat$phi[ , , offset59]
+z60 = dat$phi[ , , offset60]
+z61 = dat$phi[ , , offset61]
+z62 = dat$phi[ , , offset62]
+z63 = dat$phi[ , , offset63]
+z64 = dat$phi[ , , offset64]
+
+d <- data.frame()
+
+d <- rbind(z_14[,14][41],
+           z_13[,14][41],
+           z_12[,14][41],
+           z_11[,14][41],
+           z_10[,14][41],
+           z09[,14][41],
+           z08[,14][41],
+           z07[,14][41],
+           z06[,14][41],
+           z05[,14][41],
+           z04[,14][41],
+           z03[,14][41],
+           z02[,14][41],
+           z01[,14][41],
+           z0[,14][41],
+           z1[,14][41],
+           z2[,14][41],
+           z3[,14][41],
+           z4[,14][41],
+           z5[,14][41],
+           z6[,14][41],
+           z7[,14][41],
+           z8[,14][41],
+           z9[,14][41],
+           z10[,14][41],
+           z11[,14][41],
+           z12[,14][41],
+           z13[,14][41],
+           z14[,14][41],
+           z15[,14][41],
+           z16[,14][41],
+           z17[,14][41],
+           z18[,14][41],
+           z19[,14][41],
+           z20[,14][41],
+           z21[,14][41],
+           z22[,14][41],
+           z23[,14][41],
+           z24[,14][41],
+           z25[,14][41],
+           z26[,14][41],
+           z27[,14][41],
+           z28[,14][41],
+           z29[,14][41],
+           z30[,14][41],
+           z31[,14][41],
+           z32[,14][41],
+           z33[,14][41],
+           z34[,14][41],
+           z35[,14][41],
+           z36[,14][41],
+           z37[,14][41],
+           z38[,14][41],
+           z39[,14][41],
+           z40[,14][41],
+           z41[,14][41],
+           z42[,14][41],
+           z43[,14][41],
+           z44[,14][41],
+           z45[,14][41],
+           z46[,14][41],
+           z47[,14][41],
+           z48[,14][41],
+           z49[,14][41],
+           z50[,14][41],
+           z51[,14][41],
+           z52[,14][41],
+           z53[,14][41],
+           z54[,14][41],
+           z55[,14][41],
+           z56[,14][41],
+           z57[,14][41],
+           z58[,14][41],
+           z59[,14][41],
+           z60[,14][41],
+           z61[,14][41],
+           z62[,14][41],
+           z63[,14][41],
+           z64[,14][41])
+
+da <- as.data.frame(x=d)
+f <- seq(as.Date("2003/9/08"), as.Date("2003/11/25"), "day")
+dab <- cbind(da, f)
+colnames(dab) <- c("Pressure","Date")
+
+ggplot(dab, aes(Date, Pressure)) + 
+        geom_point() +
+        geom_line() +
+        geom_vline(xintercept = 12313, colour="blue") +
+        #geom_vline(xintercept = 12319, colour="blue") +
+        geom_vline(xintercept = 12375, colour="blue") +
+        #geom_vline(xintercept = 12378, colour="blue") +
+        labs(title="Pressure Level Between Floods in USA") +
+        labs(x="2003") +
+        theme_classic() +
+        geom_text(data=subset(dab, Date ==  "2003-09-18" | Date ==  "2003-11-19"),
+                  aes(label=Date), colour = "red")
+```
+
+
+One noticeable feature of the graph is that the pressure level seemed to have trended downward from September to November. One possible explanation for this could be seasonal variation. By examining pressure levels in the days leading up to the beginning of the flood, one can observe a sharp change pressure levels. Starting on September 15th, the pressure levels drops sharply and then increases sharply. Starting on November 16th, the pressure levels also drop sharply in the days leading up to the beginning of the flood. 
+
+At first glance, these findings might seem interesting, but when one examines the pressure levels in the days between the two floods, there are many sharp increases and decreases. Since there were no other recorded floods in the region during this time frame, one must proceed with caution when attributing the cause of these floods to changes in pressure levels leading up to the events. If anything, the pressure level was a contributing factor to the heavy rains in these regions. 

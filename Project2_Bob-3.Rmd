@@ -4,69 +4,34 @@ author: "Team"
 date: "February 18, 2016"
 output: html_document
 ---
-##Introduction 
+#Introduction 
 For this report we will be diving into the global issue of Flood Events. The intial goal of the paper will be to investigate the datasets to better understand. The dataset being investigated involves geographical, spatial, and time parameters that creates an extremely large amount of information to be explored. We will work to break down this large dataset into something smaller and begin to focus on specific events within the flood dataset.
 
 ```{r, message=F, warning=F, echo = F}
+library(dplyr)
 library(ggplot2)
 library(maps)
 library(grid)
 library(gridExtra)
 library(knitr)
-library(googleVis)
-library(gdata)
-library(plyr)
-library(dplyr)
-library(wordcloud)
-library(stringr)
-library(tm)
-library(Rmisc)
-library(chron)
-
-op <- options(gvis.plot.tag='chart')
-
 setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code")
 ```
 
+###Global Flood Events: From  Januaray 1st 1985 to December 23, 2015
+EXPLANATION NEEDED
+```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
+df = readRDS("GlobalFloodsRecord_modified.rds")
 
-```{r, message=F, warning=F, echo = FALSE, fig.align='center', eval = FALSE}
-df = readRDS("GlobalFloodsRecord.rds")
-df$Displaced = as.numeric(df$Displaced)
-df$Dead = as.numeric(df$Dead)
-df$Country = as.factor(df$Country)
-df$Centroid.X = as.numeric(as.character(df$Centroid.X))
-df$Centroid.Y = as.numeric(as.character(df$Centroid.Y))
-df$Magnitude..M... = as.numeric(as.character(df$Magnitude..M...))
-df$Affected.sq.km = as.numeric(as.character(df$Affected.sq.km))
-df$Duration.in.Days = as.numeric(as.character(df$Duration.in.Days))
-df$Severity.. = as.numeric(as.character(df$Severity..))
-df$M.6 = as.numeric(as.character(df$M.6))
-df$M.4 = as.numeric(as.character(df$M.4))
-
-df = df[,-c(31:36)]
-startend = read.csv("Start_End.csv", header = TRUE)
-df$Began = as.Date(startend$Start, "%d-%b-%y") 
-df$Ended = as.Date(startend$End, "%d-%b-%y") 
-
-month_clean <- data.frame(do.call('rbind', strsplit(as.character(df$Began),"-")))
-colnames(month_clean) = c("Year", "Month", "Day")
-
-df$Year = as.factor(month_clean$Year)
-df$Month = as.factor(month_clean$Month)
-df$Day = as.factor(month_clean$Day)
-
+require(ggplot2)
 world_map <- map_data("world")
 
-df1 = df[,c("Centroid.X","Centroid.Y")]
-colnames(df1)[which(names(df1) == "Centroid.X")] <- "CentroidX"
-colnames(df1)[which(names(df1) == "Centroid.Y")] <- "CentroidY"
 
-#df1$CentroidX=as.numeric(levels(df1$CentroidX))[df1$CentroidX]
-#df1$CentroidY=as.numeric(levels(df1$CentroidY))[df1$CentroidY]
+df1 = df[,c("Centroid X","Centroid Y")]
+colnames(df1)[which(names(df1) == "Centroid X")] <- "CentroidX"
+colnames(df1)[which(names(df1) == "Centroid Y")] <- "CentroidY"
 
-df1$CentroidX=as.numeric(df1$CentroidX)
-df1$CentroidY=as.numeric(df1$CentroidY)
-
+df1$CentroidX=as.numeric(levels(df1$CentroidX))[df1$CentroidX]
+df1$CentroidY=as.numeric(levels(df1$CentroidY))[df1$CentroidY]
 df1 = df1[complete.cases(df1$CentroidX),]
 
 col.nacheck3 = data.frame(colSums(is.na(df1)))
@@ -130,74 +95,9 @@ df$hem[!southern] = "N"
 
 
 ```
-An nteractive google map with tagged flood locations (1985-present) is displayed below. This feature allows the user to zoom in and see exactly where a flood event occured. Clicking the tag shows the date of the event.
 
 
-<center size="26"><b>Global Flood Events: From  Januaray 1st 1985 to December 23, 2015</b></center>
-```{r, echo=FALSE, results='asis', tidy=TRUE}
-df$latlong <- paste(df$latitude,df$longitude,sep=":")
-
-locmap <- gvisMap(df, locationvar="latlong", tipvar = "Began",
-                     options=list(showTip=TRUE, 
-                                  showLine=TRUE, 
-                                  enableScrollWheel=TRUE,
-                                  mapType='hybrid',
-                                  useMapTypeControl=TRUE,
-                                  zoomLevel=3,
-                                  width=400,
-                                  height=400))
-plot(locmap)
-```
-
-##Word Clouds
-<br>
-In order to understand the map data we begin to break it down by different categories and look at countries with the largest totals in each using wordclouds to investigate the different components of flooding events. The first wordcloud shows the 100 countries with the greatest number of events since 1985. The USA and China seem to be the two countries that were most affected, with the Philippines, Indonesia and India close behind. The second wordcloud highlights the attributes of the "detailed locations" column in the dataset and gives interesting insight into the types of areas that are commonly affected by flooding. 
-
-<div style="text-align: center;">
-  <span style="float:left;width: 50%;">
-    <b>Countries Word Cloud</b>
-  </span>
-  <span style="float:right;width: 50%;">
-    <b>Locations Word Cloud</b>
-  </span>
-
-  <span style="float:left;width: 50%;">
-  <IMG SRC="WC_countries.png" ALT="image",  width= "500">
-  </span>
-  
-  <span style="float:right;width: 50%;">
-  <IMG SRC="WC_locations.png" float = "right" ALT="image">
-  </span>
-
-  <span style="float:left;width: 100%;">
-<p>
-Word clouds were used to try and analyze the differences between the Northern Hemisphere (postive Latitude) and the Sourthern Hemisphere (negative Latitude). We wanted to investigate the column labeled "Notes and Comments", which included many news articles after cleaning the text the following word clouds were produced.</p>
-</span>
-
-</div>
-
-```{r}
-```
-
-
-<div style="text-align: center;">
-
-  <IMG SRC="WorldCloud_Entire.png" ALT="image",  width= "500">
-  <span style="float:left;width: 50%;">
-  <IMG SRC="WordCloud_Northern.png" float = "right" ALT="image">
-  </span>
-  
-  <span style="float:right;width: 50%;">
-  <IMG SRC="WordCloud_Southern.png" float = "left" ALT="image">
-    
-  </span>
-  <span style="float:left;width: 100%;">
-<p>
-What we can see from these plots is an interesting split between the Northern and Southern hemispheres. "People", was largely contributed by the Southern Hemisphere and "Flooding" was more attributed to the Northern.
-</p>
-</span>
-
-</div>
+In order to understand the map data we begin to break it down by different categories and look at countries with the largest totals in each.
 
 ```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
 top = 10
@@ -226,11 +126,6 @@ top10_flood = flood_count[flood_count_order[1:top],]
 
 ```
 
-
-##Top 10 Country Investigation
-
-
-  Now we will investigate the top 10 countries within different categoris of the flood data. To see if we can visualize any unique characteristics within the data. We will look at variables such as the number of floods, deaths by the floods and people displaced by the floods.
 
 
 ```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
@@ -304,6 +199,30 @@ So we can see a positive correlation occuring between the number of Flood Events
 #newdf = cbind(df,test)
 
 ```
+
+
+
+
+##Word Cloud
+
+Word clouds were used to try and analyze the differences between the Northern Hemisphere (postive Latitude) and the Sourthern Hemisphere (negative Latitude). We wanted to investigate the column labeled "Notes and Comments", which included many news articles after cleaning the text the following word clouds were produced.
+
+
+<div style="text-align: center;">
+
+  <IMG SRC="WorldCloud_Entire.png" ALT="image",  width= "500">
+  <span style="float:left;width: 50%;">
+  <IMG SRC="WordCloud_Northern.png" float = "right" ALT="image">
+  </span>
+  
+  <span style="float:right;width: 50%;">
+  <IMG SRC="WordCloud_Southern.png" float = "left" ALT="image">
+  </span>
+  
+</div>
+
+What we can see from these plots is an interesting split between the Northern and Southern hemispheres. "People", was largely contributed by the Southern Hemisphere and "Flooding" was more attributed to the Northern.
+
 
 We then continued looking into the differences between northern and southern hemispheres looking at density plots of varios attributes of the flood events.
 
@@ -390,6 +309,14 @@ As we look at the right side of the plots "Groupd by Month" we can further see s
 Severity per month does not tell us much more additional information, the splits are very similar.
 
 
+##Time Lapse
+Here we have a Time Lapse of the busiest year in terms of flood events. We can see the events appear as black dots on the world map.
+
+#Still need to load full GIF. Will load it once everyone has their code in.
+
+<div style="text-align: center;"><IMG SRC="2003-OCT.gif" ALT="image", width="500"></div>
+
+We can notice a large amount of cycling that happens in this year.
 
 ```{r, message=F, warning=F, echo = FALSE, fig.align='center'}
   
@@ -490,9 +417,13 @@ d = ggplot(filtered, aes(x=elevation, y=Magnitude..M...)) +
 From these plots we can notice that there is a negative correlation between elevation and the number of displaced people for the flood events. In contract see a positive correlation between elevation and the number of dead. 
 
 For Affected Square km it might seem that there is no correlation but there is a slightly negative correlation between teh Elevation and Affected Square km. the Y-axis is suppressing this but is not a strong enough correlation to be relevant.
-#
+
 
 ```{r, message=F, warning=F, echo = FALSE, fig.align='center', eval = F}
+library(wordcloud)
+library(dplyr)
+library(stringr)
+library(tm)
 words = df$Notes.and.Comments..may.include.quoted.headlines.from.copyrighted.news.stories..for.internal.research.purposes.only.
 words = as.character(words)
 
@@ -823,7 +754,7 @@ time = dat$T
 #1948-01-01
 start_date_phi <- as.Date("1948-01-01", "%Y-%m-%d")
 start_date_floods <- as.Date("1985-01-01", "%Y-%m-%d")
-start_date_plots  <- as.Date("2003-11-18", "%Y-%m-%d")
+start_date_plots  <- as.Date("2003-09-17", "%Y-%m-%d")
 
 start_date_plots2  <- as.Date("2003-09-17", "%Y-%m-%d")
 
@@ -840,7 +771,7 @@ start_date_plots2  <- as.Date("2003-09-17", "%Y-%m-%d")
 offset = as.numeric(start_date_floods - start_date_phi)
 offset2 = as.numeric(start_date_plots - start_date_phi)
 time2 = time[offset2:length(time)]
-time3 = time2[1:6]
+time3 = time2[1:9]
 start_date = start_date_phi + offset2-1
 
 #Begining date of FLOODS 1985-01-01
@@ -894,7 +825,7 @@ for(i in seq(min(time3),max(time3),1) ){
 
 
 make.mov <- function(){
-     system("convert *.png -set delay 1/2  2003-11-19_Event.gif")
+     system("convert *.png -set delay 1/2  2003-09-18_Event.gif")
      #1/1 is 1 second per 2 frames
 }
 
@@ -906,246 +837,7 @@ make.mov()
 
 
 
-```{r, echo=FALSE, eval = FALSE}
-create_wc <- function(col_num){
-  countries <- df[,col_num]
-  countries <- tolower(countries)
-  countries <- removePunctuation(countries)
-  countries <- removeNumbers(countries)
-  countries <- removeWords(countries,stopwords("english"))
-  
-  myCorpus <- Corpus(VectorSource(countries))
-  myTDM <- TermDocumentMatrix(myCorpus)
-  findFreqTerms(myTDM)
-  
-  m <- as.matrix(myTDM)
-  v <- sort(rowSums(m),decreasing=TRUE)
-  d <- data.frame(word = names(v),freq=v)
-  
-  pal <- brewer.pal(8,"Dark2")
-  wordcloud(d$word,d$freq,max.words=100,colors = pal,random.order=FALSE,rot.per=0.30,fixed.asp = TRUE)
-}
 
-create_wc(4)
-create_wc(8)
-create_wc(16)
-```
-
-
-##2003 Flood Event Investigation
-First we will take a holistic view of the world map during 2003, which was the year that generated the largest number of floods. While this could have been just due to reporting we will focus on this year to continue to narrow our scope of the data.
-
-Displayed below is an interactive world map showing the number of deaths by country in 2003. The countries with fewer deaths are lighter and the countries with more deaths are darker. Run the mouse over a country to display its name and number of deaths associated with it.
-
-<center size="26"><b>World Map - Deaths in 2003</b></center>
-```{r, echo=FALSE,results='asis',tidy=TRUE,fig.align='center'}
-# Google vis chart of Deaths in 2003
-newdf = df[which((df$Began>="2003-01-01")&(df$Began<="2003-12-31")),]
-
-op <- options(gvis.plot.tag='chart')
-year03 <- newdf %>% group_by(Country) %>% summarise(Dead = sum(Dead))
-year03<-as.data.frame(year03)
-
-Geo = gvisGeoChart(year03, locationvar="Country", colorvar="Dead", 
-                   options=list(projection="kavrayskiy-vii",
-                                colorAxis= "{colors: ['#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#B10026']}",
-                                backgroundColor="#deebf7",
-                                datalessRegionColor="#f0f0f0",
-                                height=500,
-                                width=700))
-cat("<center>")
-plot(Geo)
-cat("</center>")
-
-```
-
-Next is another interactive World map showing the number of displaced individuals in 2003. It has the same format and style as the previous one; run the mouse over the countries to see the country name and magnitude.
-
-
-<center size="26"><b>World Map - Displacements in 2003</b></center>
-```{r,echo=FALSE,results='asis',tidy=TRUE, fig.align="center"}
-#Google vis charts of Displacements in 2003
-
-year03 <- newdf %>% group_by(Country) %>% summarise(Displaced = sum(Displaced))
-year03<-as.data.frame(year03)
-
-Geo2 = gvisGeoChart(year03, locationvar="Country", colorvar="Displaced", 
-                   options=list(projection="kavrayskiy-vii",
-                                colorAxis= "{colors: ['#FED976','#FEB24C','#FD8D3C','#FC4E2A','#E31A1C','#B10026']}",
-                                backgroundColor="#deebf7",
-                                datalessRegionColor="#f0f0f0",
-                                height=500,
-                                width=700))
-cat("<center>")
-plot(Geo2)
-cat("</center>")
-```
-
-By looking at 2003 more closely, we can plot the number of deaths and displacements by month in that year. Both plots showed a similar overall trend; the number of deaths and displacements both reached their maximums from June to August. The faded turquoise line maps the actual number of deaths and displacements, while the dark blue smooth curve is an attempt to represent the overall trend in a more visually appealing way.
-
-```{r, echo=FALSE,fig.align='center'}
-
-# can just remove country in dplyr and ggplots below to revert back to original.
-#### Deaths vs. Month
-
-year03 <- newdf %>%
-  mutate(Month = format(Began, "%m"), Year = format(Began, "%Y"),Date = format(Began, "%m-%Y")) %>%
-  group_by(Month, Year, Date) %>%
-  summarise(Dead = sum(Dead))
-year03<-as.data.frame(year03)
-year03$Month<-as.numeric(year03$Month)
-
-#year03<- filter(year03, Country=="USA"|Country=="China"|Country=="Philippines"|Country=="Indonesia"|Country=="India")
-
-c <-ggplot(year03, aes(x=year03$Month,y=year03$Dead,group=1)) +
-  geom_point(size=1.5,colour="#7fcdbb") + 
-  geom_line(size=1.2,colour="#7fcdbb") +
-  stat_smooth(method="lm", formula= y~poly(x,8),se=F,n=80,size=2,color="#253494") +
-  scale_x_continuous(breaks=c(1:12),labels=year03$Date) +
-  labs(x="Month-Year",y="Number of Flood Deaths",title="Flood Deaths vs. Time of Year: 2003") +
-  theme(axis.text=element_text(size=6.5),axis.title=element_text(size=8),plot.title=element_text(size=14,face="bold"))
-
-
-# Displacements vs. Month
-
-year03_2 <- newdf %>%
-  mutate(Month = format(Began, "%m"), Year = format(Began, "%Y"),Date = format(Began, "%m-%Y")) %>%
-  group_by(Month, Year, Date) %>%
-  summarise(Displaced = sum(Displaced))
-year03_2<-as.data.frame(year03_2)
-year03_2$Month<-as.numeric(year03_2$Month)
-
-d <-ggplot(year03_2, aes(x=year03_2$Month,y=year03_2$Displaced,group=1)) +
-  geom_point(size=1.5,colour="#7fcdbb") + 
-  geom_line(size=1.2,colour="#7fcdbb") +
-  stat_smooth(method="lm", formula= y~poly(x,8),se=F,n=80,size=2,color="#253494") +
-  scale_x_continuous(breaks=c(1:12),labels=year03$Date) +
-  labs(x="Month-Year",y="Number of Flood Displacements",title="Flood Displacements vs. Time of Year: 2003") +
-  theme(axis.text=element_text(size=6.5),axis.title=element_text(size=8),plot.title=element_text(size=14,face="bold"))
-
-```
-
-
-```{r, echo=FALSE,fig.align='center'}
-
-multiplot(c,d)
-```
-
-
-
-
-
-We did PCA analysis on the 2003 data, with 10 numerical variables of "Duration.in.Days", "Dead", "Displaced", "Severity..", "Affected.sq.km", "Magnitude..M...", "Centroid.X", "Centroid.Y", "M.6" and "M.4". And we grouped by the Main Causes of the floods. 
-
-In 2003, there are 7 main causes, which are "Heavy rain", "Tropical Cyclone", "Brief torrential rain", "Dam/Levy, break or release", "Monsoonal rain", "Snow Melt", "Ice Jams", "Rain and Snow Melt" and "Rainy Season".      
-
-
-```{r, echo=FALSE,message=FALSE, warning=FALSE,fig.align='center'}
-library(stats)
-library(scales)
-df2 = df[df[,'Year']==2003,]
-df$Main.cause = as.factor(df$Main.cause)
-df3 = df2
-df3$Main.cause = as.character(df3$Main.cause)
-
-df3$Main.cause[df3$Main.cause=='Rain and snow'] = "Rain and Snow Melt"
-df3$Main.cause[df3$Main.cause=='Snowmelt'] = "Snow Melt"
-MainCause = df3$Main.cause
-df3_5 = df3[,c('Duration.in.Days','Dead','Displaced','Severity..', 'Affected.sq.km','Magnitude..M...','Centroid.X', 'Centroid.Y', 'M.6', 'M.4')]
-df3_5$Severity.. = as.numeric(df3_5$Severity..)
-pca <- prcomp(df3_5,scale=TRUE,center=TRUE)
-plot(pca, type = "l",main="PCA for year 2003")
-```
-
-There is one Priciple Component that explains quite a lot of the variance. The left PCs drop quickly after first one and decrease accordingly.
-
-Let's look at the summary of the PCA.
-
-```{r, echo=FALSE,message=FALSE, warning=FALSE}
-summary(pca)
-```
-
-The first PC consists of 33.85% of the total variance, together with the second PC, 46% of the variance can be explained.
-
-Next let's look at the groups by first two principle components.
-```{r, echo=FALSE,message=FALSE, warning=FALSE, fig.align='center'}
-library(devtools)
-#install_github("vqv/ggbiplot",force = TRUE)
-library(ggbiplot)
-g <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = MainCause,
-              ellipse = TRUE, circle = TRUE)
-g <- g + scale_color_discrete(name = '')
-g <- g + theme(legend.direction = 'horizontal',
-               legend.position = 'top')
-print(g)
-```
-
-The plot shows except two centroid, the other 8 factors have similar directions and they can be explianed by first principle component well. Among the groups of the main causes of floods, we can see "Snow Melt" and "Monsoonal rain" typically lie more right, which indicates heavier damage. While "Ice Jams" and "Brief torrential rain" are left in the plot, which indicates less damage.
-
-```{r, echo=FALSE,message=FALSE, warning=FALSE, eval=FALSE, fig.align='center'}
-df$Main.cause = as.factor(df$Main.cause)
-df4 = df
-df4$Main.cause = as.character(df4$Main.cause)
-
-#df4$Main.cause[df4$Main.cause=='Rain and snow'] = "Rain and Snow Melt"
-#df4$Main.cause[df4$Main.cause=='Snowmelt'] = "Snow Melt"
-
-#nrow(df3[df3$Main.cause=='Dam Failure',])
-#unique(df4$Main.cause)
-
-df4$Main.cause[df4$Main.cause=='Snowmelt'] = "Snow Melt"
-df4$Main.cause[df4$Main.cause=='snowmelt'] = "Snow Melt"
-
-df4$Main.cause[df4$Main.cause=='heavy Rain'] = "Heavy Rain"
-df4$Main.cause[df4$Main.cause=='heavy rain'] = "Heavy Rain"
-df4$Main.cause[df4$Main.cause=='Heavy  Rain'] = "Heavy Rain"
-df4$Main.cause[df4$Main.cause=='Heavy rain'] = "Heavy Rain"
-df4$Main.cause[df4$Main.cause=='HeavyRain'] = "Heavy Rain"
-
-df4$Main.cause[df4$Main.cause=='Rain and snow'] = "Rain and Snow Melt"
-df4$Main.cause[df4$Main.cause=='Rain and snowmelt'] = "Rain and Snow Melt"
-df4$Main.cause[df4$Main.cause=='Snowmelt and Heavy Rain'] = "Rain and Snow Melt"
-
-df4$Main.cause[df4$Main.cause %in% grep("^Tropical Storm", unique(df4$Main.cause), value = TRUE)] = "Tropical"
-df4$Main.cause[df4$Main.cause %in% grep("^Typhoon", unique(df4$Main.cause), value = TRUE)] = "Typhoon"
-df4$Main.cause[df4$Main.cause %in% grep("Monsoon", unique(df4$Main.cause), value = TRUE)] = "Monsoon"
-df4$Main.cause[df4$Main.cause %in% grep("monsoon", unique(df4$Main.cause), value = TRUE)] = "Monsoon"
-df4$Main.cause[df4$Main.cause %in% grep("^Hurricane", unique(df4$Main.cause), value = TRUE)] = "Hurricane"
-df4$Main.cause[df4$Main.cause %in% grep("^Tropical Cyclone", unique(df4$Main.cause), value = TRUE)] = "Tropical"
-df4$Main.cause[df4$Main.cause %in% grep("jam", unique(df4$Main.cause), value = TRUE)] = "Ice Jams"
-df4$Main.cause[df4$Main.cause %in% grep("Jam", unique(df4$Main.cause), value = TRUE)] = "Ice Jams"
-
-df4$Main.cause[df4$Main.cause %in% grep("^Dam", unique(df4$Main.cause), value = TRUE)] = "Dam"
-df4$Main.cause[df4$Main.cause %in% grep("Torrential", unique(df4$Main.cause), value = TRUE)] = "Torrrential Rain"
-df4$Main.cause[df4$Main.cause %in% grep("torrential", unique(df4$Main.cause), value = TRUE)] = "Torrrential Rain"
-
-#Extract 11 Main causes
-cause = c("Snow Melt","Heavy Rain","Rain and Snow Melt","Tropical","Typhoon","Monsoon","Hurricane","Ice Jams",
-          "Dam","Torrrential Rain")
-
-MainCause = df4$Main.cause
-
-df5 = df4[df4$Main.cause %in% cause,]
-df5$Severity.. = as.numeric(df5$Severity..)
-
-pca <- prcomp(df5[,c('Duration.in.Days','Dead','Displaced','Severity..', 'Affected.sq.km','Magnitude..M...','Centroid.X', 'Centroid.Y', 'M.6', 'M.4')],scale=TRUE,center=TRUE)
-plot(pca, type = "l",main="All floods")
-summary(pca)
-
-g1 <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = df5$Main.cause,
-              ellipse = TRUE, circle = TRUE)
-g1 <- g1 + scale_color_discrete(name = '')
-g1 <- g1 + theme(legend.direction = 'horizontal',
-               legend.position = 'top')
-print(g1)
-
-```
-
-
-##PLACE JOHN's HERE
-
-
-A flood event occured on 2003-09-18 and lasted for 7 days while another flood event occured in the same location 2003-11-19 that lasted for 4 days.
 In the following plots the events in red signify the flood event in the US corresponding with the annotated events above.
 
 <div style="text-align: center;">
@@ -1159,3 +851,4 @@ In the following plots the events in red signify the flood event in the US corre
   </span>
   
 </div>
+

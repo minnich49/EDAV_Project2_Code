@@ -5,7 +5,7 @@ output: html_document
 First of all, let's examine the overall floods events between 1985 and 2015.There are 4312 total events around the whole world. Most of the floods took place near the coast lines.
 
 ```{r, echo=FALSE,message=FALSE, warning=FALSE}
-setwd("/Users/jiabinchen/Desktop/W4701/proj2")
+setwd("/Users/bobminnich/Documents/Columbia/Courses/DataVisualization/Homework2/EDAV_Project2_Code")
 library(ggplot2)
 library(maps)
 df = readRDS("GlobalFloodsRecord.rds")
@@ -89,7 +89,7 @@ The first PC consists of 33.85% of the total variance, together with the second 
 Next let's look at the groups by first two principle components.
 ```{r, echo=FALSE,message=FALSE, warning=FALSE}
 library(devtools)
-#install_github("vqv/ggbiplot",force = TRUE)
+install_github("vqv/ggbiplot",force = TRUE)
 library(ggbiplot)
 g <- ggbiplot(pca, obs.scale = 1, var.scale = 1, groups = MainCause,
               ellipse = TRUE, circle = TRUE)
