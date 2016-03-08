@@ -1141,6 +1141,9 @@ print(g1)
 
 ```
 
+## Conclusion
+
+The exploration of the global flood data set was conducted in a hierarchical manner; starting with broader analysis, we slowly shifted our focus to a specific year and eventually singular events. The initial analysis and visualization was performed on all floods ranging from 1985-2015 by using several tools such as interactive world maps (where events are pinned), word clouds, bar charts and density plots. After the preliminary analysis, we decided to delve deeper into the year with the most flood events: 2003. World maps for the number of deaths and displacements (in 2003) were created and Principal Components Analysis was performed to get a better understanding of the relationship between variables. Next, we decided to further refine our analysis by only including flood events in the USA. A more general interactive feature was also added: a search function which displays the floods by year (or range of years) and area affected. Our general methodology was to start broad and eventually focus on several subsets of the data but it is important to mention that despite conducting a comprehensive analysis, an exhaustive analysis on a data set this size was not within the scope of the project.
 
 ##PLACE JOHN's HERE
 
